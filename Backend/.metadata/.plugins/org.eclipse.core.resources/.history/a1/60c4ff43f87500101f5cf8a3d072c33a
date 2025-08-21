@@ -1,0 +1,102 @@
+package com.datalingo.one.service;
+
+import com.datalingo.one.dto.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
+
+@Service
+public class QueryProcessingClientService {
+    
+    private static final Logger log = LoggerFactory.getLogger(QueryProcessingClientService.class);
+    
+    @Value("${app.services.query-processing.url:http://localhost:8081}")
+    private String queryProcessingServiceUrl;
+    
+    private final WebClient webClient;
+    private final RestTemplate restTemplate;
+    
+    public QueryProcessingClientService() {
+        this.webClient = WebClient.builder().build();
+        this.restTemplate = new RestTemplate();
+    }
+    
+    /**
+     * Call Query Processing Microservice using WebClient (Reactive)
+     */
+    public Mono<QueryResponse> processQueryAsync(String naturalLanguageQuery, String databaseType) {
+        log.info("Calling Query Processing Service: {}", queryProcessingServiceUrl);
+        
+        QueryRequest request = new QueryRequest();
+        request.setQuery(naturalLanguageQuery);
+        request.setDatabaseType(databaseType);
+        
+        return webClient.post()
+                .uri(queryProcessingServiceUrl + "/api/query/process")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .onStatus(status -> status.isError(), response -> {
+                    log.error("Error from Query Processing Service: {}", response.statusCode());
+                    return Mono.error(new RuntimeException("Query processing failed"));
+                })
+                .bodyToMono(QueryResponse.class)
+                .doOnNext(response -> log.info("Received response from Query Processing Service"))
+                .doOnError(error -> log.error("Error calling Query Processing Service", error));
+    }
+    
+    /**
+     * Call Query Processing Microservice using RestTemplate (Synchronous)
+     */
+    public QueryResponse processQuery(String naturalLanguageQuery, String databaseType) {
+        try {
+            log.info("Calling Query Processing Service synchronously");
+            
+            QueryRequest request = new QueryRequest();
+            request.setQuery(naturalLanguageQuery);
+            request.setDatabaseType(databaseType);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<QueryRequest> entity = new HttpEntity<>(request, headers);
+            
+            ResponseEntity<QueryResponse> response = restTemplate.postForEntity(
+                queryProcessingServiceUrl + "/api/query/process",
+                entity,
+                QueryResponse.class
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                log.info("Successfully received response from Query Processing Service");
+                return response.getBody();
+            } else {
+                throw new RuntimeException("Invalid response from Query Processing Service");
+            }
+            
+        } catch (Exception e) {
+            log.error("Error calling Query Processing Service: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to process query: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Health check for Query Processing Service
+     */
+    public boolean isQueryProcessingServiceHealthy() {
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(
+                queryProcessingServiceUrl + "/actuator/health",
+                String.class
+            );
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.warn("Query Processing Service health check failed: {}", e.getMessage());
+            return false;
+        }
+    }
+}

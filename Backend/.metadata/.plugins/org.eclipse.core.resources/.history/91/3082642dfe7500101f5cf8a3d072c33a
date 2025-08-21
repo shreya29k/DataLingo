@@ -1,0 +1,82 @@
+package com.datalingo.one.dto;
+
+//import java.util.List;
+//import java.util.Map;
+//
+//public class QueryResponse {
+//
+//    private List<Map<String, Object>> result;
+//
+//    public QueryResponse() {
+//    }
+//
+//    public QueryResponse(List<Map<String, Object>> result) {
+//        this.result = result;
+//    }
+//
+//    public List<Map<String, Object>> getResult() {
+//        return result;
+//    }
+//
+//    public void setResult(List<Map<String, Object>> result) {
+//        this.result = result;
+//    }
+//}
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
+import java.util.Map;
+
+public class QueryResponse {
+    @JsonProperty("generatedQuery")
+    private String generatedQuery;
+    
+    @JsonProperty("databaseType")
+    private String databaseType;
+    
+    @JsonProperty("queryType")
+    private String queryType;
+    
+    @JsonProperty("warnings")
+    private List<String> warnings;
+    
+    @JsonProperty("metadata")
+    private Map<String, Object> metadata;
+    
+    @JsonProperty("processingTimeMs")
+    private long processingTimeMs;
+    
+    @JsonProperty("requestId")
+    private String requestId;
+    
+    @JsonProperty("executable")
+    private boolean executable;
+    
+    // Constructors
+    public QueryResponse() {}
+    
+    // Getters and Setters
+    public String getGeneratedQuery() { return generatedQuery; }
+    public void setGeneratedQuery(String generatedQuery) { this.generatedQuery = generatedQuery; }
+    
+    public String getDatabaseType() { return databaseType; }
+    public void setDatabaseType(String databaseType) { this.databaseType = databaseType; }
+    
+    public String getQueryType() { return queryType; }
+    public void setQueryType(String queryType) { this.queryType = queryType; }
+    
+    public List<String> getWarnings() { return warnings; }
+    public void setWarnings(List<String> warnings) { this.warnings = warnings; }
+    
+    public Map<String, Object> getMetadata() { return metadata; }
+    public void setMetadata(Map<String, Object> metadata) { this.metadata = metadata; }
+    
+    public long getProcessingTimeMs() { return processingTimeMs; }
+    public void setProcessingTimeMs(long processingTimeMs) { this.processingTimeMs = processingTimeMs; }
+    
+    public String getRequestId() { return requestId; }
+    public void setRequestId(String requestId) { this.requestId = requestId; }
+    
+    public boolean isExecutable() { return executable; }
+    public void setExecutable(boolean executable) { this.executable = executable; }
+}

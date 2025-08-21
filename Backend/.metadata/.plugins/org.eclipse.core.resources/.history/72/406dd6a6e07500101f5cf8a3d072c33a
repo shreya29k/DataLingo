@@ -1,0 +1,35 @@
+package com.datalingo.one.model;
+
+public enum FileType {
+	
+	    CSV("text/csv"),
+	    EXCEL_XLS("application/vnd.ms-excel"),
+	    EXCEL_XLSX("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	    
+	    private final String mimeType;
+	    
+	    FileType(String mimeType) {
+	        this.mimeType = mimeType;
+	    }
+	    
+	    public String getMimeType() {
+	        return mimeType;
+	    }
+	    
+	    public static FileType fromFileName(String fileName) {
+	        String extension = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+	        switch (extension) {
+	            case "csv":
+	                return CSV;
+	            case "xls":
+	                return EXCEL_XLS;
+	            case "xlsx":
+	                return EXCEL_XLSX;
+	            default:
+	                throw new IllegalArgumentException("Unsupported file type: " + extension);
+	        }
+	    }
+	}
+
+
+

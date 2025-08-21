@@ -1,0 +1,29 @@
+package com.datalingo.one.service.impl;
+
+import com.datalingo.one.service.QueryProcessingService;
+import com.datalingo.one.service.QueryToSqlConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class GptQueryService implements QueryProcessingService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(GptQueryService.class);
+    
+    @Autowired
+    private QueryToSqlConverter queryToSqlConverter;
+    
+    @Override
+    public String processQuery(String naturalLanguageQuery, String tableSchema) {
+        logger.info("Processing query through QueryToSqlConverter: {}", naturalLanguageQuery);
+        
+        try {
+            return queryToSqlConverter.convertToSql(naturalLanguageQuery, tableSchema);
+        } catch (Exception e) {
+            logger.error("Failed to process query", e);
+            throw new RuntimeException("Query processing failed: " + e.getMessage(), e);
+        }
+    }
+}

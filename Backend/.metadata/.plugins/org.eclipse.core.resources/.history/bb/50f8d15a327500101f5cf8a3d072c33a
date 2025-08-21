@@ -1,0 +1,142 @@
+package com.datalingo.one.service;
+
+import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
+import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
+
+import java.time.Instant;
+import java.util.UUID;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
+
+@Service
+@Slf4j
+public class QueryProcessingService1 {
+    
+    private final MistralApiClient mistralClient;
+    private final PromptEngineeringService promptService;
+    private final QueryValidationService validationService;
+    
+    public QueryProcessingService(
+            MistralApiClient mistralClient,
+            PromptEngineeringService promptService,
+            QueryValidationService validationService) {
+        this.mistralClient = mistralClient;
+        this.promptService = promptService;
+        this.validationService = validationService;
+    }
+    
+    /**
+     * Main method to process natural language query and generate database-specific query
+     */
+    public Mono<QueryResponse> processQuery(QueryRequest request) {
+        String requestId = UUID.randomUUID().toString();
+        long startTime = System.currentTimeMillis();
+        
+        log.info("Processing query request: {} for database: {}", requestId, request.getDatabaseType());
+        
+        return Mono.fromCallable(() -> {
+            // Build optimized prompt for Mistral
+            String prompt = promptService.buildPrompt(request);
+            log.debug("Generated prompt for request {}: {}", requestId, prompt);
+            return prompt;
+        })
+        .flatMap(prompt -> mistralClient.generateQuery(prompt))
+        .map(generatedQuery -> {
+            // Clean and validate the response
+            String cleanedQuery = cleanGeneratedQuery(generatedQuery);
+            List<String> warnings = validationService.validateQuery(cleanedQuery, request.getDatabaseType());
+            
+            long processingTime = System.currentTimeMillis() - startTime;
+            
+            return QueryResponse.builder()
+                .generatedQuery(cleanedQuery)
+                .databaseType(request.getDatabaseType())
+                .isExecutable(warnings.isEmpty())
+                .queryType(determineQueryType(cleanedQuery, request.getDatabaseType()))
+                .warnings(warnings)
+                .processingTimeMs(processingTime)
+                .requestId(requestId)
+                .metadata(Map.of(
+                    "model", "mistral:7b",
+                    "timestamp", Instant.now(),
+                    "tables_involved", request.getTablesOrCollections()
+                ))
+                .build();
+        })
+        .doOnSuccess(response -> {
+            log.info("Query processed successfully: {} in {}ms", requestId, response.getProcessingTimeMs());
+        })
+        .doOnError(error -> {
+            log.error("Error processing query {}: {}", requestId, error.getMessage());
+        });
+    }
+    
+    /**
+     * Cached query processing for repeated queries
+     */
+    @Cacheable(value = "generated-queries", key = "#request.naturalQuery + #request.databaseType + #request.tablesOrCollections.hashCode()")
+    public Mono<QueryResponse> processQueryCached(QueryRequest request) {
+        log.info("Processing cached query for: {}", request.getNaturalQuery());
+        return processQuery(request);
+    }
+    
+    /**
+     * Health check for Mistral service
+     */
+    public Mono<Map<String, Object>> healthCheck() {
+        return mistralClient.checkHealth()
+            .map(isHealthy -> Map.of(
+                "status", isHealthy ? "UP" : "DOWN",
+                "model", "mistral:7b",
+                "timestamp", Instant.now(),
+                "service", "local-ollama"
+            ));
+    }
+    
+    private String cleanGeneratedQuery(String rawQuery) {
+        if (rawQuery == null) return "";
+        
+        // Remove common prefixes and suffixes
+        String cleaned = rawQuery
+            .replaceAll("(?i)^(SQL Query:|MongoDB Query:|Python Code:|Query:|```sql|```python|```json|```)", "")
+            .replaceAll("(?i)(```|```)$", "")
+            .trim();
+        
+        // Remove extra whitespace and newlines
+        cleaned = cleaned.replaceAll("\\n+", "\n").trim();
+        
+        return cleaned;
+    }
+    
+    private String determineQueryType(String query, DatabaseType dbType) {
+        String queryUpper = query.toUpperCase();
+        
+        switch (dbType) {
+            case MYSQL:
+            case POSTGRESQL:
+                if (queryUpper.contains("SELECT")) return "SELECT";
+                if (queryUpper.contains("INSERT")) return "INSERT";
+                if (queryUpper.contains("UPDATE")) return "UPDATE";
+                if (queryUpper.contains("DELETE")) return "DELETE";
+                break;
+                
+            case MONGODB:
+                if (query.contains("find(")) return "FIND";
+                if (query.contains("aggregate(")) return "AGGREGATION";
+                if (query.contains("insertOne") || query.contains("insertMany")) return "INSERT";
+                break;
+                
+            case EXCEL:
+            case CSV:
+                if (query.contains("groupby")) return "AGGREGATION";
+                if (query.contains("merge") || query.contains("join")) return "JOIN";
+                if (query.contains("read_")) return "READ";
+                break;
+        }
+        
+        return "UNKNOWN";
+    }
+}

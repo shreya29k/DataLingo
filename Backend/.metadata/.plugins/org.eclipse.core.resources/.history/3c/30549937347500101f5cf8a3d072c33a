@@ -1,0 +1,107 @@
+package com.datalingo.one.service;
+
+import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.regex.Pattern;
+
+@Service
+@Slf4j
+public class QueryValidationService {
+    
+    private static final List<String> DANGEROUS_SQL_KEYWORDS = List.of(
+        "DROP", "TRUNCATE", "DELETE", "ALTER", "CREATE", "GRANT", "REVOKE"
+    );
+    
+    private static final Pattern SQL_INJECTION_PATTERN = Pattern.compile(
+        ".*(\\bUNION\\b|\\bSELECT\\b.*\\bFROM\\b.*\\bINFORMATION_SCHEMA\\b|\\b--\\b|\\b/\\*|\\*/)",
+        Pattern.CASE_INSENSITIVE
+    );
+    
+    public List<String> validateQuery(String query, DatabaseType databaseType) {
+        List<String> warnings = new ArrayList<>();
+        
+        if (query == null || query.trim().isEmpty()) {
+            warnings.add("Generated query is empty");
+            return warnings;
+        }
+        
+        switch (databaseType) {
+            case MYSQL:
+            case POSTGRESQL:
+                warnings.addAll(validateSqlQuery(query));
+                break;
+            case MONGODB:
+                warnings.addAll(validateMongoQuery(query));
+                break;
+            case EXCEL:
+            case CSV:
+                warnings.addAll(validatePandasCode(query));
+                break;
+        }
+        
+        return warnings;
+    }
+    
+    private List<String> validateSqlQuery(String query) {
+        List<String> warnings = new ArrayList<>();
+        String queryUpper = query.toUpperCase();
+        
+        // Check for dangerous operations
+        for (String keyword : DANGEROUS_SQL_KEYWORDS) {
+            if (queryUpper.contains(keyword)) {
+                warnings.add("Query contains potentially dangerous keyword: " + keyword);
+            }
+        }
+        
+        // Check for SQL injection patterns
+        if (SQL_INJECTION_PATTERN.matcher(query).matches()) {
+            warnings.add("Query contains suspicious patterns");
+        }
+        
+        // Basic syntax checks
+        if (!queryUpper.trim().endsWith(";") && queryUpper.contains("SELECT")) {
+            warnings.add("SQL query should end with semicolon");
+        }
+        
+        return warnings;
+    }
+    
+    private List<String> validateMongoQuery(String query) {
+        List<String> warnings = new ArrayList<>();
+        
+        // Check if it's valid JSON structure
+        try {
+            if (query.contains("{") && !isValidJsonStructure(query)) {
+                warnings.add("MongoDB query may have invalid JSON structure");
+            }
+        } catch (Exception e) {
+            warnings.add("Error validating MongoDB query structure");
+        }
+        
+        return warnings;
+    }
+    
+    private List<String> validatePandasCode(String query) {
+        List<String> warnings = new ArrayList<>();
+        
+        // Check for dangerous Python operations
+        List<String> dangerousOperations = List.of("exec(", "eval(", "import os", "subprocess", "__import__");
+        
+        for (String operation : dangerousOperations) {
+            if (query.contains(operation)) {
+                warnings.add("Code contains potentially dangerous operation: " + operation);
+            }
+        }
+        
+        return warnings;
+    }
+    
+    private boolean isValidJsonStructure(String query) {
+        // Basic JSON structure validation
+        int openBraces = query.length() - query.replace("{", "").length();
+        int closeBraces = query.length() - query.replace("}", "").length();
+        return openBraces == closeBraces;
+    }
+}

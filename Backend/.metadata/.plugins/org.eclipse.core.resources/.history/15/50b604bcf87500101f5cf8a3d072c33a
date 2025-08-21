@@ -1,0 +1,26 @@
+//package com.datalingo.one.dto;
+//
+//import java.util.List;
+//import java.util.Map;
+//
+//public class DatabaseMetadata {
+//    private List<String> tables;
+//    private Map<String, List<String>> tableColumns;
+//    private String databaseName;
+//    private String version;
+//
+//    // Getters and Setters
+//    public List<String> getTables() { return tables; }
+//    public void setTables(List<String> tables) { this.tables = tables; }
+//    
+//    public Map<String, List<String>> getTableColumns() { return tableColumns; }
+//    public void setTableColumns(Map<String, List<String>> tableColumns) { 
+//        this.tableColumns = tableColumns; 
+//    }
+//    
+//    public String getDatabaseName() { return databaseName; }
+//    public void setDatabaseName(String databaseName) { this.databaseName = databaseName; }
+//    
+//    public String getVersion() { return version; }
+//    public void setVersion(String version) { this.version = version; }
+//}

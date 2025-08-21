@@ -1,0 +1,5 @@
+package com.datalingo.one.util;
+
+public class SqlQueryValidator {
+
+}

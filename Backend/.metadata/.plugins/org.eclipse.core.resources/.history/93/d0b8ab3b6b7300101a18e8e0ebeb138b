@@ -1,0 +1,22 @@
+
+
+# ===============================
+# = Server Configuration
+# ===============================
+server.port=8084
+spring.application.name=data-source-service
+
+# ===============================
+# = PostgreSQL Database Config
+# ===============================
+spring.datasource.url=jdbc:postgresql://localhost:5432/cdac
+spring.datasource.username=postgres
+spring.datasource.password=2529
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# ===============================
+# = Hibernate (JPA) Settings
+# ===============================
+spring.jpa.hibernate.ddl-auto=none
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect

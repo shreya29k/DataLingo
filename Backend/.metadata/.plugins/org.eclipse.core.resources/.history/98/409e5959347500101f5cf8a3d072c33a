@@ -1,0 +1,66 @@
+//package com.datalingo.one.service.impl;
+//
+//import com.datalingo.one.service.QueryProcessingService;
+//import com.datalingo.one.service.QueryToSqlConverter;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
+//import org.springframework.beans.factory.annotation.Autowired;
+//import org.springframework.stereotype.Service;
+//
+//@Service
+//public class GptQueryService implements QueryProcessingService {
+//    
+//    private static final Logger logger = LoggerFactory.getLogger(GptQueryService.class);
+//    
+//    @Autowired
+//    private QueryToSqlConverter queryToSqlConverter;
+//    
+//    @Override
+//    public String processQuery(String naturalLanguageQuery, String tableSchema) {
+//        logger.info("Processing query through QueryToSqlConverter: {}", naturalLanguageQuery);
+//        
+//        try {
+//            return queryToSqlConverter.convertToSql(naturalLanguageQuery, tableSchema);
+//        } catch (Exception e) {
+//            logger.error("Failed to process query", e);
+//            throw new RuntimeException("Query processing failed: " + e.getMessage(), e);
+//        }
+//    }
+//}
+package com.datalingo.one.service.impl;
+
+import com.datalingo.one.service.QueryProcessingService;
+import com.datalingo.one.service.OpenAIQueryToSqlConverter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Service
+public class GptQueryService implements QueryProcessingService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(GptQueryService.class);
+    
+    @Autowired
+    private OpenAIQueryToSqlConverter openAIQueryToSqlConverter;
+    
+    @Override
+    public String processQuery(String naturalLanguageQuery, String tableSchema) {
+        logger.info("=== GptQueryService Processing ===");
+        logger.info("Natural Language Query: {}", naturalLanguageQuery);
+        logger.info("Table Schema: {}", tableSchema);
+        
+        try {
+            String sqlQuery = openAIQueryToSqlConverter.convertToSql(naturalLanguageQuery, tableSchema);
+            logger.info("Generated SQL Query: {}", sqlQuery);
+            return sqlQuery;
+        } catch (Exception e) {
+            logger.error("Error in GptQueryService.processQuery", e);
+            
+            // Return a simple fallback instead of throwing exception
+            String fallbackSql = "SELECT * FROM employees WHERE salary > 50000; -- Fallback due to error: " + e.getMessage();
+            logger.info("Returning fallback SQL: {}", fallbackSql);
+            return fallbackSql;
+        }
+    }
+}

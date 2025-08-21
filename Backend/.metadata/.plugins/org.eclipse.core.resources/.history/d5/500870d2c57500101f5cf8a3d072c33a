@@ -1,0 +1,32 @@
+spring.application.name=query-processing-service
+
+
+
+logging.level.com.datalingo.one=DEBUG
+server.port=8086
+server.tomcat.connection-timeout=120s
+
+spring.mvc.async.request-timeout=90s
+eureka.client.fetch-registry=true
+eureka.client.register-with-eureka=true
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+
+# WebClient timeout configuration
+spring.webflux.timeout=120s
+
+mistral.model-name=mistral:7b-instruct-q4_K_M
+mistral.base-url=http://localhost:11434
+mistral.timeout-seconds=120
+mistral.temperature=0.1
+mistral.top-p=0.9
+mistral.max-tokens=300
+eureka.client.eureka-connection-idle-timeout-seconds=120
+eureka.client.eureka-server-read-timeout-seconds=120
+# Optional
+eureka.instance.prefer-ip-address=true
+
+
+
+logging.level.com.datalingo=INFO
+logging.level.reactor.netty=WARN
+logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n

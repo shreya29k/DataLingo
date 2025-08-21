@@ -1,0 +1,21 @@
+package com.datalingo.one.dto;
+
+class DirectQueryRequest {
+    private String sqlQuery;
+    private String databaseId;
+    private DatabaseType databaseType;
+    private String format; // json, table, csv, summary
+    
+    // Getters and Setters
+    public String getSqlQuery() { return sqlQuery; }
+    public void setSqlQuery(String sqlQuery) { this.sqlQuery = sqlQuery; }
+    
+    public String getDatabaseId() { return databaseId; }
+    public void setDatabaseId(String databaseId) { this.databaseId = databaseId; }
+    
+    public DatabaseType getDatabaseType() { return databaseType; }
+    public void setDatabaseType(DatabaseType databaseType) { this.databaseType = databaseType; }
+    
+    public String getFormat() { return format; }
+    public void setFormat(String format) { this.format = format; }
+}

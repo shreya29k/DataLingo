@@ -1,0 +1,290 @@
+package com.datalingo.one.service;
+
+import com.datalingo.one.dto.QueryExecutionResult;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.sql.Date;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+public class DataFormatterService {
+    
+    private static final Logger log = LoggerFactory.getLogger(DataFormatterService.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    
+    /**
+     * Format query execution result for different output formats
+     */
+    public FormattedQueryResult formatResult(QueryExecutionResult result, String format) {
+        FormattedQueryResult formattedResult = new FormattedQueryResult();
+        formattedResult.setSuccess(result.isSuccess());
+        formattedResult.setQueryType(result.getQueryType());
+        formattedResult.setExecutionTimeMs(result.getExecutionTimeMs());
+        formattedResult.setRowCount(result.getRowCount());
+        formattedResult.setColumns(result.getColumns());
+        formattedResult.setColumnTypes(result.getColumnTypes());
+        
+        if (!result.isSuccess()) {
+            formattedResult.setErrorMessage(result.getErrorMessage());
+            return formattedResult;
+        }
+        
+        if (result.getResultSet() != null && !result.getResultSet().isEmpty()) {
+            switch (format.toLowerCase()) {
+                case "table":
+                    formattedResult.setData(formatAsTable(result));
+                    break;
+                case "json":
+                    formattedResult.setData(formatAsJson(result));
+                    break;
+                case "csv":
+                    formattedResult.setData(formatAsCsv(result));
+                    break;
+                case "summary":
+                    formattedResult.setData(formatAsSummary(result));
+                    break;
+                default:
+                    formattedResult.setData(formatAsStandardJson(result));
+            }
+        } else {
+            formattedResult.setData(Collections.emptyMap());
+        }
+        
+        return formattedResult;
+    }
+    
+    /**
+     * Format as table structure for UI display
+     */
+    private Map<String, Object> formatAsTable(QueryExecutionResult result) {
+        Map<String, Object> tableData = new HashMap<>();
+        
+        // Convert data to proper types and handle nulls
+        List<Map<String, Object>> processedRows = result.getResultSet().stream()
+            .map(this::processRow)
+            .collect(Collectors.toList());
+        
+        tableData.put("columns", result.getColumns());
+        tableData.put("columnTypes", result.getColumnTypes());
+        tableData.put("rows", processedRows);
+        tableData.put("totalRows", result.getRowCount());
+        
+        // Add column statistics
+        if (!processedRows.isEmpty()) {
+            tableData.put("columnStats", generateColumnStats(processedRows, result.getColumns()));
+        }
+        
+        return tableData;
+    }
+    
+    /**
+     * Format as clean JSON with type conversion
+     */
+    private Map<String, Object> formatAsJson(QueryExecutionResult result) {
+        Map<String, Object> jsonData = new HashMap<>();
+        
+        List<Map<String, Object>> processedRows = result.getResultSet().stream()
+            .map(this::processRow)
+            .collect(Collectors.toList());
+        
+        jsonData.put("data", processedRows);
+        jsonData.put("metadata", Map.of(
+            "columns", result.getColumns(),
+            "columnTypes", result.getColumnTypes(),
+            "rowCount", result.getRowCount()
+        ));
+        
+        return jsonData;
+    }
+    
+    /**
+     * Format as CSV string
+     */
+    private Map<String, Object> formatAsCsv(QueryExecutionResult result) {
+        StringBuilder csv = new StringBuilder();
+        
+        // Header
+        if (result.getColumns() != null) {
+            csv.append(String.join(",", result.getColumns())).append("\n");
+        }
+        
+        // Rows
+        for (Map<String, Object> row : result.getResultSet()) {
+            List<String> values = new ArrayList<>();
+            for (String column : result.getColumns()) {
+                Object value = row.get(column);
+                values.add(value != null ? escapeCsvValue(value.toString()) : "");
+            }
+            csv.append(String.join(",", values)).append("\n");
+        }
+        
+        return Map.of("csv", csv.toString());
+    }
+    
+    /**
+     * Format as summary with statistics
+     */
+    private Map<String, Object> formatAsSummary(QueryExecutionResult result) {
+        Map<String, Object> summary = new HashMap<>();
+        
+        summary.put("totalRows", result.getRowCount());
+        summary.put("totalColumns", result.getColumns().size());
+        summary.put("columnNames", result.getColumns());
+        summary.put("columnTypes", result.getColumnTypes());
+        
+        if (!result.getResultSet().isEmpty()) {
+            // Sample data (first 5 rows)
+            List<Map<String, Object>> sampleData = result.getResultSet().stream()
+                .limit(5)
+                .map(this::processRow)
+                .collect(Collectors.toList());
+            summary.put("sampleData", sampleData);
+            
+            // Column statistics
+            summary.put("columnStatistics", generateColumnStats(result.getResultSet(), result.getColumns()));
+        }
+        
+        return summary;
+    }
+    
+    /**
+     * Format as standard JSON (default)
+     */
+    private Map<String, Object> formatAsStandardJson(QueryExecutionResult result) {
+        Map<String, Object> data = new HashMap<>();
+        
+        List<Map<String, Object>> processedRows = result.getResultSet().stream()
+            .map(this::processRow)
+            .collect(Collectors.toList());
+        
+        data.put("results", processedRows);
+        data.put("rowCount", result.getRowCount());
+        data.put("columns", result.getColumns());
+        
+        return data;
+    }
+    
+    /**
+     * Process individual row to handle type conversion and nulls
+     */
+    private Map<String, Object> processRow(Map<String, Object> row) {
+        Map<String, Object> processedRow = new HashMap<>();
+        
+        for (Map.Entry<String, Object> entry : row.entrySet()) {
+            Object value = entry.getValue();
+            processedRow.put(entry.getKey(), convertValue(value));
+        }
+        
+        return processedRow;
+    }
+    
+    /**
+     * Convert database values to appropriate JSON types
+     */
+    private Object convertValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        
+        // Handle different data types
+        if (value instanceof BigDecimal) {
+            return ((BigDecimal) value).doubleValue();
+        }
+        if (value instanceof BigInteger) {
+            return ((BigInteger) value).longValue();
+        }
+        if (value instanceof Date) {
+            return value.toString();
+        }
+        if (value instanceof Time) {
+            return value.toString();
+        }
+        if (value instanceof Timestamp) {
+            return value.toString();
+        }
+        if (value instanceof LocalDate) {
+            return value.toString();
+        }
+        if (value instanceof LocalTime) {
+            return value.toString();
+        }
+        if (value instanceof LocalDateTime) {
+            return value.toString();
+        }
+        if (value instanceof byte[]) {
+            return Base64.getEncoder().encodeToString((byte[]) value);
+        }
+        
+        return value;
+    }
+    
+    /**
+     * Generate column statistics
+     */
+    private Map<String, Object> generateColumnStats(List<Map<String, Object>> rows, List<String> columns) {
+        Map<String, Object> stats = new HashMap<>();
+        
+        for (String column : columns) {
+            Map<String, Object> columnStat = new HashMap<>();
+            
+            List<Object> values = rows.stream()
+                .map(row -> row.get(column))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+            
+            columnStat.put("totalValues", values.size());
+            columnStat.put("nullCount", rows.size() - values.size());
+            
+            if (!values.isEmpty()) {
+                Object firstValue = values.get(0);
+                
+                if (firstValue instanceof Number) {
+                    // Numeric statistics
+                    List<Double> numericValues = values.stream()
+                        .map(v -> ((Number) v).doubleValue())
+                        .collect(Collectors.toList());
+                    
+                    columnStat.put("min", numericValues.stream().min(Double::compareTo).orElse(0.0));
+                    columnStat.put("max", numericValues.stream().max(Double::compareTo).orElse(0.0));
+                    columnStat.put("avg", numericValues.stream().mapToDouble(Double::doubleValue).average().orElse(0.0));
+                } else if (firstValue instanceof String) {
+                    // String statistics
+                    List<String> stringValues = values.stream()
+                        .map(Object::toString)
+                        .collect(Collectors.toList());
+                    
+                    columnStat.put("uniqueCount", stringValues.stream().distinct().count());
+                    columnStat.put("avgLength", stringValues.stream()
+                        .mapToInt(String::length)
+                        .average()
+                        .orElse(0.0));
+                }
+            }
+            
+            stats.put(column, columnStat);
+        }
+        
+        return stats;
+    }
+    
+    /**
+     * Escape CSV values
+     */
+    private String escapeCsvValue(String value) {
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+}

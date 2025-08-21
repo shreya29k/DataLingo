@@ -1,0 +1,175 @@
+package com.datalingo.one.service;
+
+import com.datalingo.one.model.entity.ProcessedFile;
+import com.datalingo.one.model.dto.TableSchema;
+import com.datalingo.one.util.DatabaseTableCreator;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.io.FileInputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class ExcelProcessingService {
+    
+    @Autowired
+    private DatabaseTableCreator tableCreator;
+    
+    /**
+     * Process Excel file and create database table
+     */
+    public void processExcelFile(ProcessedFile processedFile) throws Exception {
+        try (FileInputStream fis = new FileInputStream(processedFile.getFilePath())) {
+            
+            Workbook workbook;
+            
+            // Determine workbook type based on file extension
+            if (processedFile.getOriginalFileName().toLowerCase().endsWith(".xlsx")) {
+                workbook = new XSSFWorkbook(fis);
+            } else {
+                workbook = new HSSFWorkbook(fis);
+            }
+            
+            // Get first sheet
+            Sheet sheet = workbook.getSheetAt(0);
+            
+            if (sheet.getPhysicalNumberOfRows() == 0) {
+                throw new Exception("Excel sheet is empty");
+            }
+            
+            // Read headers from first row
+            Row headerRow = sheet.getRow(0);
+            if (headerRow == null) {
+                throw new Exception("Excel file has no header row");
+            }
+            
+            List<String> headers = new ArrayList<>();
+            for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+                Cell cell = headerRow.getCell(i);
+                headers.add(cell != null ? getCellValueAsString(cell) : "column_" + i);
+            }
+            
+            // Read data rows
+            List<String[]> dataRows = new ArrayList<>();
+            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                Row row = sheet.getRow(rowIndex);
+                if (row == null) continue;
+                
+                String[] rowData = new String[headers.size()];
+                for (int colIndex = 0; colIndex < headers.size(); colIndex++) {
+                    Cell cell = row.getCell(colIndex);
+                    rowData[colIndex] = cell != null ? getCellValueAsString(cell) : "";
+                }
+                dataRows.add(rowData);
+            }
+            
+            // Generate table name
+            String tableName = generateTableName(processedFile.getOriginalFileName());
+            processedFile.setTableName(tableName);
+            
+            // Create table schema
+            TableSchema schema = createSchemaFromExcel(headers, dataRows, tableName);
+            
+            // Create database table and insert data
+            tableCreator.createTableFromSchema(schema, dataRows);
+            
+            // Update file metadata
+            processedFile.setRowCount(dataRows.size());
+            processedFile.setColumnCount(headers.size());
+            
+            workbook.close();
+            
+        } catch (Exception e) {
+            throw new Exception("Failed to process Excel file: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Get cell value as string regardless of cell type
+     */
+    private String getCellValueAsString(Cell cell) {
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getDateCellValue().toString();
+                } else {
+                    return String.valueOf(cell.getNumericCellValue());
+                }
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            case BLANK:
+                return "";
+            default:
+                return "";
+        }
+    }
+    
+    /**
+     * Create table schema from Excel data
+     */
+    private TableSchema createSchemaFromExcel(List<String> headers, List<String[]> dataRows, String tableName) {
+        List<TableSchema.ColumnInfo> columns = new ArrayList<>();
+        
+        for (int i = 0; i < headers.size(); i++) {
+            String columnName = cleanColumnName(headers.get(i));
+            String dataType = inferDataType(dataRows, i);
+            
+            columns.add(new TableSchema.ColumnInfo(columnName, dataType, true));
+        }
+        
+        return new TableSchema(tableName, columns, dataRows.size());
+    }
+    
+    /**
+     * Infer data type from sample data
+     */
+    private String inferDataType(List<String[]> dataRows, int columnIndex) {
+        for (String[] row : dataRows) {
+            if (columnIndex < row.length && row[columnIndex] != null && !row[columnIndex].trim().isEmpty()) {
+                String value = row[columnIndex].trim();
+                
+                try {
+                    Long.parseLong(value.contains(".") ? value.split("\\.")[0] : value);
+                    return "BIGINT";
+                } catch (NumberFormatException e1) {
+                    try {
+                        Double.parseDouble(value);
+                        return "DECIMAL(15,2)";
+                    } catch (NumberFormatException e2) {
+                        if (value.matches("\\d{4}-\\d{2}-\\d{2}.*") || 
+                            value.matches("\\d{2}/\\d{2}/\\d{4}.*")) {
+                            return "TIMESTAMP";
+                        }
+                        return "VARCHAR(255)";
+                    }
+                }
+            }
+        }
+        return "VARCHAR(255)";
+    }
+    
+    /**
+     * Clean column name for database compatibility
+     */
+    private String cleanColumnName(String columnName) {
+        return columnName.trim()
+                        .replaceAll("[^a-zA-Z0-9_]", "_")
+                        .replaceAll("_{2,}", "_")
+                        .toLowerCase();
+    }
+    
+    /**
+     * Generate table name from file name
+     */
+    private String generateTableName(String fileName) {
+        String baseName = fileName.substring(0, fileName.lastIndexOf('.'));
+        return "tbl_" + baseName.replaceAll("[^a-zA-Z0-9_]", "_").toLowerCase();
+    }
+}

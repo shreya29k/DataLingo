@@ -1,0 +1,120 @@
+package com.datalingo.one.controller;
+
+import com.datalingo.one.dto.*;
+import com.datalingo.one.service.*;
+import com.datalingo.one.service.QueryProcessingClientService;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/data")
+@CrossOrigin(origins = "*")
+public class DataExecutionController {
+    
+    private static final Logger log = LoggerFactory.getLogger(DataExecutionController.class);
+    
+    // Choose one of these based on your integration approach
+    
+    // Option 1: Using custom client service
+    @Autowired
+    private QueryProcessingClientService queryProcessingClient;
+    
+    // Option 2: Using Feign client (comment out if not using)
+    // @Autowired
+    // private QueryProcessingClient queryProcessingClient;
+    
+    @Autowired
+    private DataSourceService dataSourceService;
+    
+    @Autowired
+    private DataFormatterService dataFormatterService;
+    
+    /**
+     * Generate query via microservice and execute it
+     */
+    @PostMapping("/generate-and-execute")
+    public ResponseEntity<QueryExecutionResponse> generateAndExecuteQuery(
+            @RequestBody QueryExecutionRequest request) {
+        
+        log.info("Processing query execution request for database: {}", request.getDatabaseId());
+        
+        try {
+            // Step 1: Call Query Processing Microservice
+            QueryResponse generatedQuery = queryProcessingClient.processQuery(
+                request.getNaturalLanguageQuery(), 
+                request.getDatabaseType().toString()
+            );
+            
+            if (!generatedQuery.isExecutable()) {
+                return ResponseEntity.badRequest()
+                    .body(QueryExecutionResponse.error("Generated query is not executable: " + 
+                          generatedQuery.getErrorMessage()));
+            }
+            
+            // Step 2: Execute the generated SQL query locally
+            QueryExecutionResult executionResult = dataSourceService.executeQuery(
+                request.getDatabaseId(),
+                generatedQuery.getGeneratedQuery(),
+                request.getDatabaseType()
+            );
+            
+            // Step 3: Format the results
+            String format = request.getFormat() != null ? request.getFormat() : "json";
+            FormattedQueryResult formattedResult = dataFormatterService.formatResult(executionResult, format);
+            
+            // Step 4: Build response
+            QueryExecutionResponse response = new QueryExecutionResponse();
+            response.setSuccess(executionResult.isSuccess());
+            response.setGeneratedQuery(generatedQuery.getGeneratedQuery());
+            response.setQueryType(generatedQuery.getQueryType());
+            response.setExecutionResult(executionResult);
+            response.setFormattedData(formattedResult.getData());
+            response.setGenerationMetadata(generatedQuery.getMetadata());
+            response.setTotalProcessingTimeMs(
+                generatedQuery.getProcessingTimeMs() + executionResult.getExecutionTimeMs()
+            );
+            
+            if (!executionResult.isSuccess()) {
+                response.setErrorMessage(executionResult.getErrorMessage());
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            log.info("Query pipeline completed successfully. Rows: {}, Total time: {}ms", 
+                    executionResult.getRowCount(), response.getTotalProcessingTimeMs());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error in query execution pipeline: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                .body(QueryExecutionResponse.error("Pipeline error: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Health check endpoint that includes microservice status
+     */
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> healthCheck() {
+        Map<String, Object> health = new HashMap<>();
+        
+        // Check local database connections
+        boolean dbHealthy = dataSourceService.testConnection("mysql-default", DatabaseType.MYSQL);
+        
+        // Check query processing microservice
+        boolean queryServiceHealthy = queryProcessingClient.isQueryProcessingServiceHealthy();
+        
+        health.put("database", dbHealthy ? "UP" : "DOWN");
+        health.put("queryProcessingService", queryServiceHealthy ? "UP" : "DOWN");
+        health.put("overall", (dbHealthy && queryServiceHealthy) ? "UP" : "DOWN");
+        
+        return ResponseEntity.ok(health);
+    }
+}

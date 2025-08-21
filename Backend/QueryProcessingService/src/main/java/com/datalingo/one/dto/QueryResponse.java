@@ -1,0 +1,22 @@
+
+package com.datalingo.one.dto;
+import java.util.List;
+import java.util.Map;
+
+import com.datalingo.one.dto.DatabaseType;
+
+import lombok.Builder;
+import lombok.Data;
+
+@Data
+@Builder
+public class QueryResponse {
+    private String generatedQuery;
+    private DatabaseType databaseType;
+    private boolean isExecutable;
+    private String queryType; // SELECT, INSERT, UPDATE, AGGREGATION, etc.
+    private List<String> warnings;
+    private Map<String, Object> metadata;
+    private long processingTimeMs;
+    private String requestId;
+}

@@ -1,0 +1,37 @@
+package com.datalingo.one.dto;
+//
+//public class ConnectionTestResponse {
+//    private boolean success;
+//    private String message;
+//    
+//    // Getters and Setters
+//    public boolean isSuccess() { return success; }
+//    public void setSuccess(boolean success) { this.success = success; }
+//    
+//    public String getMessage() { return message; }
+//    public void setMessage(String message) { this.message = message; }
+//}
+
+class ConnectionTestResponse {
+    private boolean success;
+    private String message;
+    private boolean databaseConnected;
+    private boolean queryServiceConnected;
+    
+    // Getters and Setters
+    public boolean isSuccess() { return success; }
+    public void setSuccess(boolean success) { this.success = success; }
+    
+    public String getMessage() { return message; }
+    public void setMessage(String message) { this.message = message; }
+    
+    public boolean isDatabaseConnected() { return databaseConnected; }
+    public void setDatabaseConnected(boolean databaseConnected) { 
+        this.databaseConnected = databaseConnected; 
+    }
+    
+    public boolean isQueryServiceConnected() { return queryServiceConnected; }
+    public void setQueryServiceConnected(boolean queryServiceConnected) { 
+        this.queryServiceConnected = queryServiceConnected; 
+    }
+}

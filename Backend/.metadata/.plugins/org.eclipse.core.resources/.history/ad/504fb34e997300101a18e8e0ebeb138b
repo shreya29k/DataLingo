@@ -1,0 +1,5 @@
+package com.datalingo.one.config;
+
+public class AppConfig {
+
+}

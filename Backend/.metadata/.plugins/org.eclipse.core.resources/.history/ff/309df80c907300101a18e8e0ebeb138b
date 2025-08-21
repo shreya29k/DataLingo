@@ -1,0 +1,15 @@
+package com.datalingo.one.service.impl;
+
+import com.datalingo.one.service.QueryProcessingService;
+import org.springframework.stereotype.Service;
+
+@Service
+public class GptQueryService implements QueryProcessingService {
+
+    @Override
+    public String processQuery(String naturalLanguageQuery, String tableSchema) {
+        // TODO: Call OpenAI / T5 / custom model here
+        // For now, return dummy SQL for testing
+        return "SELECT * FROM users WHERE age > 30;";
+    }
+}

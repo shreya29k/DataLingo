@@ -1,0 +1,10 @@
+package com.datalingo.one.dto;
+
+public enum DatabaseType {
+	MYSQL,
+    POSTGRESQL,
+    SQLSERVER,
+    ORACLE,
+    SQLITE
+
+}

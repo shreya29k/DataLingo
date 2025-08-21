@@ -1,0 +1,5 @@
+package com.datalingo.one.model.enums;
+
+public enum ProcessingStatus {
+
+}

@@ -1,0 +1,33 @@
+package com.datalingo.one.util;
+
+public class FileValidator {
+	public void validateFile(MultipartFile file) throws FileProcessingException {
+	    if (file == null || file.isEmpty()) {
+	        throw new FileProcessingException("File is empty");
+	    }
+	    
+	    // Check file size
+	    if (file.getSize() > maxFileSize) {
+	        throw new FileProcessingException("File size exceeds maximum allowed size of " + 
+	                                        (maxFileSize / 1024 / 1024) + "MB");
+	    }
+	    
+	    // Check file type
+	    String fileName = file.getOriginalFilename();
+	    if (fileName == null || fileName.trim().isEmpty()) {
+	        throw new FileProcessingException("Invalid file name");
+	    }
+	    
+	    try {
+	        FileType.fromFileName(fileName);
+	    } catch (IllegalArgumentException e) {
+	        throw new UnsupportedFileTypeException("Unsupported file type. Only CSV, XLS, and XLSX files are supported.");
+	    }
+	    
+	    // Check if file has extension
+	    if (!fileName.contains(".")) {
+	        throw new FileProcessingException("File must have a valid extension");
+	    }
+	}
+
+}

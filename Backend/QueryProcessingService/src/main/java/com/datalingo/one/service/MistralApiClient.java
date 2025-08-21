@@ -1,0 +1,294 @@
+// Fixed MistralApiClient.java with proper timeout handling
+package com.datalingo.one.service;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.reactive.function.BodyInserters;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.datalingo.one.config.MistralConfig;
+import com.fasterxml.jackson.databind.JsonNode;
+import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.resources.ConnectionProvider;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+
+import java.time.Duration;
+import java.util.Map;
+import java.util.HashMap;
+
+@Service
+@Slf4j
+public class MistralApiClient {
+
+    private final WebClient webClient;
+    private final MistralConfig config;
+    private final ObjectMapper objectMapper;
+
+    public MistralApiClient(MistralConfig config, ObjectMapper objectMapper) {
+        this.config = config;
+        this.objectMapper = objectMapper;
+        
+        ConnectionProvider connectionProvider = ConnectionProvider.builder("ollama-pool")
+            .maxConnections(10)
+            .maxIdleTime(Duration.ofMinutes(2))
+            .maxLifeTime(Duration.ofMinutes(5))
+            .pendingAcquireTimeout(Duration.ofSeconds(60))
+            .build();
+        
+        HttpClient httpClient = HttpClient.create(connectionProvider)
+            .responseTimeout(Duration.ofMinutes(3))
+            .keepAlive(true);
+        
+        this.webClient = WebClient.builder()
+            .baseUrl(config.getBaseUrl())
+            .clientConnector(new ReactorClientHttpConnector(httpClient))
+            .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
+            .build();
+        
+        log.info("MistralApiClient initialized with model: {}, timeout: {}s", 
+                config.getModelName(), config.getTimeoutSeconds());
+    }
+
+    public Mono<String> generateQuery(String prompt) {
+        Map<String, Object> requestBody = createOptimizedRequestBody(prompt);
+        
+        log.info("Sending request to Ollama - model: {}, promptLength: {}, timeout: {}s", 
+                config.getModelName(), prompt.length(), config.getTimeoutSeconds());
+        
+        // Log the actual request being sent
+        try {
+            String requestJson = objectMapper.writeValueAsString(requestBody);
+            log.debug("Request body: {}", requestJson);
+        } catch (Exception e) {
+            log.warn("Could not log request body: {}", e.getMessage());
+        }
+
+        return webClient.post()
+            .uri("/api/generate")
+            .header("Content-Type", "application/json")
+            .body(BodyInserters.fromValue(requestBody))
+            .retrieve()
+            .bodyToMono(String.class)
+            .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
+            .map(response -> {
+                log.info("Raw response from Ollama: {}", response);
+                return extractResponse(response);
+            })
+            .doOnSuccess(response -> log.info("Successfully processed Ollama response: {}", 
+                response.length() > 100 ? response.substring(0, 100) + "..." : response))
+            .doOnError(error -> logDetailedError(error))
+            .onErrorResume(error -> handleError(error));
+    }
+    
+    private Map<String, Object> createOptimizedRequestBody(String prompt) {
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", config.getModelName());
+        requestBody.put("prompt", prompt);
+        requestBody.put("stream", false);
+        
+        // Enhanced options to encourage response generation
+        Map<String, Object> options = new HashMap<>();
+        options.put("temperature", 0.2);      // Slightly higher for creativity
+        options.put("top_p", 0.95);           // Higher top_p
+        options.put("top_k", 50);             // Add top_k sampling
+        options.put("num_predict", 500);      // Increased back to ensure complete response
+        options.put("num_ctx", 4096);         // Larger context window
+        options.put("repeat_penalty", 1.05);  // Lower repeat penalty
+        options.put("repeat_last_n", 64);     // Context for repeat penalty
+        
+        // Remove stop tokens that might cut off SQL queries
+        // options.put("stop", new String[]{"```", "---", "END"});  // REMOVED
+        
+        requestBody.put("options", options);
+        return requestBody;
+    }
+
+    private String extractResponse(String jsonResponse) {
+        try {
+            log.debug("Parsing Ollama response of length: {}", jsonResponse.length());
+            
+            JsonNode responseNode = objectMapper.readTree(jsonResponse);
+            
+            // Log the full response structure for debugging
+            log.debug("Response structure: {}", responseNode.toString());
+            
+            if (responseNode.has("error")) {
+                String error = responseNode.get("error").asText();
+                log.error("Ollama returned error: {}", error);
+                return "ERROR: " + error;
+            }
+            
+            if (responseNode.has("response")) {
+                String response = responseNode.get("response").asText();
+                log.info("Raw response content: '{}'", response);
+                
+                if (response == null || response.trim().isEmpty()) {
+                    log.warn("Ollama returned empty response content");
+                    
+                    // Check if model finished processing
+                    boolean done = responseNode.has("done") && responseNode.get("done").asBoolean();
+                    log.info("Model processing done: {}", done);
+                    
+                    // Try different response fields
+                    if (responseNode.has("message")) {
+                        JsonNode message = responseNode.get("message");
+                        if (message.has("content")) {
+                            response = message.get("content").asText();
+                            log.info("Found content in message field: '{}'", response);
+                        }
+                    }
+                    
+                    if (response == null || response.trim().isEmpty()) {
+                        return "ERROR: Model returned empty response - try a different prompt or check model status";
+                    }
+                }
+                
+                return cleanAndValidateResponse(response);
+            } else {
+                log.error("No 'response' field in Ollama response. Available fields: {}", 
+                         String.join(", ", (Iterable<? extends CharSequence>) responseNode.fieldNames()));
+                return "ERROR: Invalid response format from Ollama";
+            }
+            
+        } catch (Exception e) {
+            log.error("Error parsing Ollama response: {}", e.getMessage(), e);
+            log.debug("Raw response that caused error: {}", jsonResponse);
+            return "ERROR: Failed to parse response - " + e.getMessage();
+        }
+    }
+    
+    private String cleanAndValidateResponse(String response) {
+        if (response == null || response.trim().isEmpty()) {
+            return "ERROR: Empty response from model";
+        }
+        
+        log.debug("Cleaning response: '{}'", response);
+        
+        // Clean the response but preserve SQL structure
+        String cleaned = response
+            .replaceAll("(?i)^(SQL Query:|Query:|```sql|```)", "")
+            .replaceAll("(?i)(```|```)$", "")
+            .replaceAll("\\*\\*", "")  // Remove bold markdown
+            .trim();
+        
+        // If still empty after cleaning
+        if (cleaned.isEmpty()) {
+            log.warn("Response became empty after cleaning. Original: '{}'", response);
+            return response.trim(); // Return original
+        }
+        
+        // Extract SQL if mixed with explanation
+        String sqlQuery = extractSqlFromMixedResponse(cleaned);
+        if (sqlQuery != null && !sqlQuery.trim().isEmpty()) {
+            log.info("Extracted SQL query: {}", sqlQuery);
+            return sqlQuery;
+        }
+        
+        log.info("Cleaned response: {}", cleaned);
+        return cleaned;
+    }
+    
+    private String extractSqlFromMixedResponse(String response) {
+        // Try to find SQL patterns
+        String[] lines = response.split("\n");
+        StringBuilder sqlBuilder = new StringBuilder();
+        boolean inSqlBlock = false;
+        
+        for (String line : lines) {
+            String trimmedLine = line.trim().toUpperCase();
+            
+            // Start of SQL
+            if (trimmedLine.startsWith("SELECT") || trimmedLine.startsWith("INSERT") ||
+                trimmedLine.startsWith("UPDATE") || trimmedLine.startsWith("DELETE") ||
+                trimmedLine.startsWith("CREATE") || trimmedLine.startsWith("ALTER")) {
+                inSqlBlock = true;
+                sqlBuilder.append(line).append("\n");
+            }
+            // Continue SQL block
+            else if (inSqlBlock && (trimmedLine.contains("FROM") || trimmedLine.contains("WHERE") || 
+                     trimmedLine.contains("JOIN") || trimmedLine.contains("GROUP BY") ||
+                     trimmedLine.contains("ORDER BY") || trimmedLine.contains("HAVING") ||
+                     trimmedLine.endsWith(";") || line.trim().endsWith(","))) {
+                sqlBuilder.append(line).append("\n");
+                
+                // End of SQL if semicolon
+                if (line.trim().endsWith(";")) {
+                    break;
+                }
+            }
+            // End SQL block if we hit explanation text
+            else if (inSqlBlock && (trimmedLine.startsWith("THIS") || trimmedLine.startsWith("THE") ||
+                     trimmedLine.startsWith("EXPLANATION") || trimmedLine.startsWith("NOTE"))) {
+                break;
+            }
+        }
+        
+        String extracted = sqlBuilder.toString().trim();
+        return extracted.isEmpty() ? null : extracted;
+    }
+
+    private void logDetailedError(Throwable error) {
+        if (error instanceof WebClientResponseException) {
+            WebClientResponseException webError = (WebClientResponseException) error;
+            log.error("Ollama API error - Status: {}, Body: {}", 
+                     webError.getStatusCode(), webError.getResponseBodyAsString());
+        } else {
+            log.error("Ollama request failed: {}", error.getMessage(), error);
+        }
+    }
+
+    private Mono<String> handleError(Throwable error) {
+        String errorMessage;
+        
+        if (error instanceof java.util.concurrent.TimeoutException || 
+            error.getMessage().contains("timeout")) {
+            errorMessage = "Request timed out - Ollama model may be slow to respond";
+        } else if (error instanceof WebClientResponseException) {
+            WebClientResponseException webError = (WebClientResponseException) error;
+            errorMessage = String.format("HTTP %s: %s", 
+                                        webError.getStatusCode(), 
+                                        webError.getResponseBodyAsString());
+        } else {
+            errorMessage = error.getMessage();
+        }
+        
+        return Mono.just("ERROR: Failed to generate query - " + errorMessage);
+    }
+
+    public Mono<Boolean> checkHealth() {
+        return webClient.get()
+            .uri("/api/tags")
+            .retrieve()
+            .bodyToMono(String.class)
+            .timeout(Duration.ofSeconds(10))
+            .map(response -> response.contains(config.getModelName()))
+            .onErrorReturn(false);
+    }
+    
+    /**
+     * Test method to debug empty responses
+     */
+    public Mono<String> testSimpleGeneration() {
+        Map<String, Object> simpleRequest = new HashMap<>();
+        simpleRequest.put("model", config.getModelName());
+        simpleRequest.put("prompt", "Write a simple SELECT statement:");
+        simpleRequest.put("stream", false);
+        
+        Map<String, Object> options = new HashMap<>();
+        options.put("temperature", 0.7);
+        options.put("num_predict", 50);
+        simpleRequest.put("options", options);
+        
+        return webClient.post()
+            .uri("/api/generate")
+            .body(BodyInserters.fromValue(simpleRequest))
+            .retrieve()
+            .bodyToMono(String.class)
+            .map(response -> {
+                log.info("Simple test response: {}", response);
+                return response;
+            });
+    }
+}

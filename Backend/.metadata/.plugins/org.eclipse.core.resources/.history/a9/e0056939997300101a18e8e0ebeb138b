@@ -1,0 +1,9 @@
+// QueryProcessingService.java
+package com.datalingo.one.service;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+
+public interface QueryProcessingService {
+	String processQuery(String naturalLanguageQuery, String tableSchema);
+}

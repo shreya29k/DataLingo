@@ -1,0 +1,21 @@
+// QueryController.java
+package com.datalingo.one.controller;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import com.datalingo.one.service.QueryProcessingService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/query")
+@RequiredArgsConstructor
+public class QueryController {
+
+    private final QueryProcessingService queryService;
+
+    @PostMapping("/execute")
+    public QueryResponse convertQuery(@RequestBody QueryRequest request) {
+        return queryService.process(request);
+    }
+}

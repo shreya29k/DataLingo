@@ -1,0 +1,87 @@
+package com.datalingo.one.controller;
+
+import org.springframework.web.bind.annotation.*;
+
+import com.datalingo.one.dto.DatabaseType;
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import com.datalingo.one.service.QueryProcessingService1;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
+
+import jakarta.validation.Valid;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/v1/query")
+@Slf4j
+@Validated
+public class QueryProcessingController {
+    
+    private final QueryProcessingService1 queryProcessingService;
+    
+    public QueryProcessingController(QueryProcessingService1 queryProcessingService) {
+        this.queryProcessingService = queryProcessingService;
+    }
+    
+    /**
+     * Process natural language query and generate database-specific query
+     */
+    @PostMapping("/generate")
+    public Mono<ResponseEntity<QueryResponse>> generateQuery(@Valid @RequestBody QueryRequest request) {
+        log.info("Received query generation request for database: {}", request.getDatabaseType());
+        
+        return queryProcessingService.processQueryCached(request)
+            .map(response -> {
+                if (response.getGeneratedQuery().startsWith("ERROR:")) {
+                    return ResponseEntity.badRequest().body(response);
+                }
+                return ResponseEntity.ok(response);
+            })
+            .onErrorResume(error -> {
+                log.error("Error in query generation", error);
+                QueryResponse errorResponse = QueryResponse.builder()
+                    .generatedQuery("ERROR: " + error.getMessage())
+                    .isExecutable(false)
+                    .processingTimeMs(0L)
+                    .build();
+                return Mono.just(ResponseEntity.internalServerError().body(errorResponse));
+            });
+    }
+    
+    /**
+     * Health check endpoint
+     */
+    @GetMapping("/health")
+    public Mono<ResponseEntity<Map<String, Object>>> healthCheck() {
+        return queryProcessingService.healthCheck()
+            .map(ResponseEntity::ok)
+            .onErrorReturn(ResponseEntity.internalServerError().body(
+                Map.of("status", "DOWN", "error", "Service unavailable")
+            ));
+    }
+    
+    /**
+     * Get supported database types
+     */
+    @GetMapping("/supported-databases")
+    public ResponseEntity<Map<String, Object>> getSupportedDatabases() {
+        return ResponseEntity.ok(Map.of(
+            "supported_databases", DatabaseType.values(),
+            "model", "mistral:7b",
+            "features", List.of(
+                "SQL queries (MySQL, PostgreSQL)",
+                "MongoDB aggregation pipelines", 
+                "Excel/CSV data analysis",
+                "Multi-table joins",
+                "Complex aggregations",
+                "Data analytics"
+            )
+        ));
+    }
+}

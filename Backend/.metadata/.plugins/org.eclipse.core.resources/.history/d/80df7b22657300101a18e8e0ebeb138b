@@ -1,0 +1,35 @@
+package com.datalingo.one.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import com.datalingo.one.service.QueryExecutorFactory;
+import com.datalingo.one.service.QueryExecutorService;
+
+@RestController
+@RequestMapping("/api/datasource")
+public class DataSourceController {
+
+    private final QueryExecutorFactory executorFactory;
+
+    public DataSourceController(QueryExecutorFactory executorFactory) {
+        this.executorFactory = executorFactory;
+    }
+
+    @PostMapping("/execute")
+    public ResponseEntity<?> executeQuery(@RequestBody QueryRequest queryRequest) {
+        try {
+            QueryExecutorService executor = executorFactory.getExecutor(queryRequest.getDataSource());
+            QueryResponse response = executor.execute(queryRequest);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+        }
+    }
+}

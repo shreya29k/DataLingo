@@ -1,0 +1,18 @@
+package com.datalingo.one.dto;
+
+import java.util.List;
+import java.util.Map;
+
+public class QueryResponse {
+	
+	private List<Map<String, Object>> result;
+
+    public QueryResponse(List<Map<String, Object>> result) {
+        this.result = result;
+    }
+
+    public List<Map<String, Object>> getResult() {
+        return result;
+    }
+
+}

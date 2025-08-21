@@ -1,0 +1,9 @@
+package com.datalingo.one.service;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+
+public interface DataSourceService {
+	 QueryResponse executeQuery(QueryRequest request);
+
+}

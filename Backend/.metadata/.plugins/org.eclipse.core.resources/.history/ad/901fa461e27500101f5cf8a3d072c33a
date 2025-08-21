@@ -1,0 +1,46 @@
+package com.datalingo.one.model.dto;
+
+public class FileUploadResponse {
+    
+    private Long fileId;
+    private String fileName;
+    private FileType fileType;
+    private ProcessingStatus status;
+    private String message;
+    private Long fileSize;
+    private String dataSourceId;
+    
+    // Constructors
+    public FileUploadResponse() {}
+    
+    public FileUploadResponse(Long fileId, String fileName, FileType fileType, 
+                            ProcessingStatus status, String message) {
+        this.fileId = fileId;
+        this.fileName = fileName;
+        this.fileType = fileType;
+        this.status = status;
+        this.message = message;
+    }
+    
+    // Getters and Setters
+    public Long getFileId() { return fileId; }
+    public void setFileId(Long fileId) { this.fileId = fileId; }
+    
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+    
+    public FileType getFileType() { return fileType; }
+    public void setFileType(FileType fileType) { this.fileType = fileType; }
+    
+    public ProcessingStatus getStatus() { return status; }
+    public void setStatus(ProcessingStatus status) { this.status = status; }
+    
+    public String getMessage() { return message; }
+    public void setMessage(String message) { this.message = message; }
+    
+    public Long getFileSize() { return fileSize; }
+    public void setFileSize(Long fileSize) { this.fileSize = fileSize; }
+    
+    public String getDataSourceId() { return dataSourceId; }
+    public void setDataSourceId(String dataSourceId) { this.dataSourceId = dataSourceId; }
+}

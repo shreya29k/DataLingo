@@ -1,0 +1,16 @@
+package com.datalingo.one.dto;
+class QueryExecutionResponse {
+    private boolean success;
+    private String generatedQuery;
+    private String queryType;
+    private QueryExecutionResult executionResult;
+    private Object generationMetadata;
+    private long totalProcessingTimeMs;
+    private String errorMessage;
+    
+    public static QueryExecutionResponse error(String errorMessage) {
+        QueryExecutionResponse response = new QueryExecutionResponse();
+        response.setSuccess(false);
+        response.setErrorMessage(errorMessage);
+        return response;
+    }

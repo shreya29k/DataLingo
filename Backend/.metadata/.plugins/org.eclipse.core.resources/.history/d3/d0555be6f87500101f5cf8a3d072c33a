@@ -1,0 +1,56 @@
+package com.datalingo.one.dto;
+
+import java.util.List;
+import java.util.Map;
+
+public class QueryExecutionResult {
+    private boolean success;
+    private String queryType;
+    private List<Map<String, Object>> resultSet;
+    private List<String> columns;
+    private Map<String, String> columnTypes;
+    private int rowCount;
+    private int rowsAffected;
+    private long executionTimeMs;
+    private String errorMessage;
+    private String sqlQuery; // Store the executed query
+
+    public static QueryExecutionResult error(String errorMessage, long executionTime) {
+        QueryExecutionResult result = new QueryExecutionResult();
+        result.setSuccess(false);
+        result.setErrorMessage(errorMessage);
+        result.setExecutionTimeMs(executionTime);
+        return result;
+    }
+
+    // Getters and Setters
+    public boolean isSuccess() { return success; }
+    public void setSuccess(boolean success) { this.success = success; }
+    
+    public String getQueryType() { return queryType; }
+    public void setQueryType(String queryType) { this.queryType = queryType; }
+    
+    public List<Map<String, Object>> getResultSet() { return resultSet; }
+    public void setResultSet(List<Map<String, Object>> resultSet) { this.resultSet = resultSet; }
+    
+    public List<String> getColumns() { return columns; }
+    public void setColumns(List<String> columns) { this.columns = columns; }
+    
+    public Map<String, String> getColumnTypes() { return columnTypes; }
+    public void setColumnTypes(Map<String, String> columnTypes) { this.columnTypes = columnTypes; }
+    
+    public int getRowCount() { return rowCount; }
+    public void setRowCount(int rowCount) { this.rowCount = rowCount; }
+    
+    public int getRowsAffected() { return rowsAffected; }
+    public void setRowsAffected(int rowsAffected) { this.rowsAffected = rowsAffected; }
+    
+    public long getExecutionTimeMs() { return executionTimeMs; }
+    public void setExecutionTimeMs(long executionTimeMs) { this.executionTimeMs = executionTimeMs; }
+    
+    public String getErrorMessage() { return errorMessage; }
+    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    
+    public String getSqlQuery() { return sqlQuery; }
+    public void setSqlQuery(String sqlQuery) { this.sqlQuery = sqlQuery; }
+}

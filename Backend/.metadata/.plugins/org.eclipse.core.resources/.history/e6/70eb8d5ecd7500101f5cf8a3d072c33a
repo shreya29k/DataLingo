@@ -1,0 +1,24 @@
+package com.datalingo.one.controller;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import com.datalingo.one.service.DataSourceService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/query")
+public class DataSourceController {
+
+    private final DataSourceService dataSourceService;
+
+    @Autowired
+    public DataSourceController(DataSourceService dataSourceService) {
+        this.dataSourceService = dataSourceService;
+    }
+
+    @PostMapping("/execute")
+    public QueryResponse executeQuery(@RequestBody QueryRequest request) {
+        return dataSourceService.processQuery(request);
+    }
+}

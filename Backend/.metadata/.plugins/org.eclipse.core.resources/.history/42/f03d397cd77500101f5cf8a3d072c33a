@@ -1,0 +1,172 @@
+package com.datalingo.one.controller;
+
+import com.datalingo.one.dto.*;
+import com.datalingo.one.service.DataSourceService;
+import com.datalingo.one.service.QueryProcessingService;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/query")
+@CrossOrigin(origins = "*")
+public class QueryExecutionController {
+    
+    private static final Logger log = LoggerFactory.getLogger(QueryExecutionController.class);
+    
+    @Autowired
+    private QueryProcessingService queryProcessingService;
+    
+    @Autowired
+    private DataSourceService dataSourceService;
+    
+    @Autowired
+    private DataFormatterService dataFormatterService;
+    
+    /**
+     * Generate and execute a query based on natural language input
+     */
+    @PostMapping("/generate-and-execute")
+    public ResponseEntity<QueryExecutionResponse> generateAndExecuteQuery(
+            @RequestBody QueryExecutionRequest request) {
+        
+        log.info("Received query execution request for database: {}", request.getDatabaseId());
+        
+        try {
+            // Step 1: Generate SQL query using existing service
+            QueryResponse generatedQuery = queryProcessingService.processQuery(
+                request.getNaturalLanguageQuery(), 
+                request.getDatabaseType().toString()
+            );
+            
+            if (!generatedQuery.isExecutable()) {
+                return ResponseEntity.badRequest()
+                    .body(QueryExecutionResponse.error("Generated query is not executable: " + 
+                          String.join(", ", generatedQuery.getWarnings())));
+            }
+            
+            // Step 2: Execute the generated SQL query
+            QueryExecutionResult executionResult = dataSourceService.executeQuery(
+                request.getDatabaseId(),
+                generatedQuery.getGeneratedQuery(),
+                request.getDatabaseType()
+            );
+            
+            // Step 3: Format the results
+            String format = request.getFormat() != null ? request.getFormat() : "json";
+            FormattedQueryResult formattedResult = dataFormatterService.formatResult(executionResult, format);
+            
+            // Step 4: Combine results
+            QueryExecutionResponse response = new QueryExecutionResponse();
+            response.setSuccess(executionResult.isSuccess());
+            response.setGeneratedQuery(generatedQuery.getGeneratedQuery());
+            response.setQueryType(generatedQuery.getQueryType());
+            response.setExecutionResult(executionResult);
+            response.setFormattedData(formattedResult.getData());
+            response.setGenerationMetadata(generatedQuery.getMetadata());
+            response.setTotalProcessingTimeMs(
+                generatedQuery.getProcessingTimeMs() + executionResult.getExecutionTimeMs()
+            );
+            
+            if (!executionResult.isSuccess()) {
+                response.setErrorMessage(executionResult.getErrorMessage());
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            log.info("Query executed successfully. Rows: {}, Time: {}ms", 
+                    executionResult.getRowCount(), response.getTotalProcessingTimeMs());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error in query execution pipeline: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                .body(QueryExecutionResponse.error("Internal error: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Execute a pre-written SQL query with formatting
+     */
+    @PostMapping("/execute")
+    public ResponseEntity<Object> executeQuery(@RequestBody DirectQueryRequest request) {
+        log.info("Executing direct SQL query on database: {}", request.getDatabaseId());
+        
+        try {
+            QueryExecutionResult result = dataSourceService.executeQuery(
+                request.getDatabaseId(),
+                request.getSqlQuery(),
+                request.getDatabaseType()
+            );
+            
+            // Format the results if requested
+            if (request.getFormat() != null) {
+                FormattedQueryResult formattedResult = dataFormatterService.formatResult(result, request.getFormat());
+                return ResponseEntity.ok(formattedResult);
+            } else {
+                return ResponseEntity.ok(result);
+            }
+            
+        } catch (Exception e) {
+            log.error("Error executing direct query: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                .body(QueryExecutionResult.error("Execution error: " + e.getMessage(), 0));
+        }
+    }
+    
+    /**
+     * Test database connection
+     */
+    @PostMapping("/test-connection")
+    public ResponseEntity<ConnectionTestResponse> testConnection(@RequestBody ConnectionTestRequest request) {
+        log.info("Testing connection to database: {}", request.getDatabaseId());
+        
+        try {
+            boolean isConnected = dataSourceService.testConnection(
+                request.getDatabaseId(), 
+                request.getDatabaseType()
+            );
+            
+            ConnectionTestResponse response = new ConnectionTestResponse();
+            response.setSuccess(isConnected);
+            response.setMessage(isConnected ? "Connection successful" : "Connection failed");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error testing database connection: {}", e.getMessage(), e);
+            ConnectionTestResponse response = new ConnectionTestResponse();
+            response.setSuccess(false);
+            response.setMessage("Connection test failed: " + e.getMessage());
+            return ResponseEntity.ok(response);
+        }
+    }
+    
+    /**
+     * Get database metadata (tables, columns)
+     */
+    @GetMapping("/metadata/{databaseId}")
+    public ResponseEntity<DatabaseMetadata> getDatabaseMetadata(
+            @PathVariable String databaseId,
+            @RequestParam DatabaseType databaseType) {
+        
+        log.info("Retrieving metadata for database: {}", databaseId);
+        
+        try {
+            DatabaseMetadata metadata = dataSourceService.getDatabaseMetadata(databaseId, databaseType);
+            
+            if (metadata == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            return ResponseEntity.ok(metadata);
+            
+        } catch (Exception e) {
+            log.error("Error retrieving database metadata: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+}

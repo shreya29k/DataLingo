@@ -1,0 +1,53 @@
+package com.datalingo.one.dto;
+
+//import java.util.Map;
+//
+//public class QueryRequest {
+//    private String query;
+//    private String databaseType;
+//    private Map<String, Object> metadata;
+//    
+//    // Getters and setters
+//    public String getQuery() { return query; }
+//    public void setQuery(String query) { this.query = query; }
+//    
+//    public String getDatabaseType() { return databaseType; }
+//    public void setDatabaseType(String databaseType) { this.databaseType = databaseType; }
+//    
+//    public Map<String, Object> getMetadata() { return metadata; }
+//    public void setMetadata(Map<String, Object> metadata) { this.metadata = metadata; }
+//}
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public class QueryRequest {
+    @JsonProperty("naturalLanguageQuery")
+    private String naturalLanguageQuery;
+    
+    @JsonProperty("databaseType")
+    private String databaseType;
+    
+    @JsonProperty("context")
+    private String context; // Optional database context/schema info
+    
+    // Constructors
+    public QueryRequest() {}
+    
+    public QueryRequest(String naturalLanguageQuery, String databaseType) {
+        this.naturalLanguageQuery = naturalLanguageQuery;
+        this.databaseType = databaseType;
+    }
+    
+    // Getters and Setters
+    public String getNaturalLanguageQuery() { return naturalLanguageQuery; }
+    public void setNaturalLanguageQuery(String naturalLanguageQuery) { 
+        this.naturalLanguageQuery = naturalLanguageQuery; 
+    }
+    
+    public String getDatabaseType() { return databaseType; }
+    public void setDatabaseType(String databaseType) { this.databaseType = databaseType; }
+    
+    public String getContext() { return context; }
+    public void setContext(String context) { this.context = context; }
+}
+    

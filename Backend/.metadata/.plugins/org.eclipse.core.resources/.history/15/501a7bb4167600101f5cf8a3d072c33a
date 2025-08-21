@@ -1,0 +1,61 @@
+package com.datalingo.one.service;
+
+import com.datalingo.one.client.QueryProcessingClient;
+import com.datalingo.one.dto.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class DataSourceService {
+
+    private final QueryProcessingClient queryProcessingClient;
+    private final QueryExecutionService queryExecutionService;
+
+    public ExecutionResponse processPromptAndExecute(QueryRequest request) {
+        try {
+            log.info("Processing prompt: {}", request.getPrompt());
+            
+            // Step 1: Generate query using query-processing-service
+            QueryResponse queryResponse = queryProcessingClient.generateQuery(request);
+            
+            if (queryResponse == null || queryResponse.getGeneratedQuery() == null) {
+                return ExecutionResponse.builder()
+                    .success(false)
+                    .error("Failed to generate query from prompt")
+                    .build();
+            }
+            
+            if (!queryResponse.isExecutable()) {
+                return ExecutionResponse.builder()
+                    .success(false)
+                    .error("Generated query is not executable")
+                    .build();
+            }
+            
+            log.info("Generated query: {}", queryResponse.getGeneratedQuery());
+            
+            // Step 2: Execute the generated query
+            ExecutionRequest executionRequest = new ExecutionRequest();
+            executionRequest.setQuery(queryResponse.getGeneratedQuery());
+            executionRequest.setDatabaseType(queryResponse.getDatabaseType());
+            executionRequest.setRequestId(queryResponse.getRequestId());
+            executionRequest.setParameters(request.getParameters());
+            
+            return queryExecutionService.executeQuery(executionRequest);
+            
+        } catch (Exception e) {
+            log.error("Error processing prompt and executing query: {}", e.getMessage(), e);
+            return ExecutionResponse.builder()
+                .success(false)
+                .error("Service error: " + e.getMessage())
+                .build();
+        }
+    }
+
+    public ExecutionResponse executeDirectQuery(ExecutionRequest request) {
+        return queryExecutionService.executeQuery(request);
+    }
+}

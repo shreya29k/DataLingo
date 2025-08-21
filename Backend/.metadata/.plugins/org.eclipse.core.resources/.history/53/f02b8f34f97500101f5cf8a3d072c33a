@@ -1,0 +1,52 @@
+package com.datalingo.one.util;
+
+
+import org.springframework.stereotype.Component;
+import java.util.regex.Pattern;
+
+@Component
+public class SqlQueryValidator {
+    
+    private static final Pattern SELECT_PATTERN = Pattern.compile("^\\s*SELECT\\s+", Pattern.CASE_INSENSITIVE);
+    private static final Pattern INSERT_PATTERN = Pattern.compile("^\\s*INSERT\\s+", Pattern.CASE_INSENSITIVE);
+    private static final Pattern UPDATE_PATTERN = Pattern.compile("^\\s*UPDATE\\s+", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DELETE_PATTERN = Pattern.compile("^\\s*DELETE\\s+", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DDL_PATTERN = Pattern.compile("^\\s*(CREATE|ALTER|DROP)\\s+", Pattern.CASE_INSENSITIVE);
+    
+    public boolean isValidQuery(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return false;
+        }
+        
+        String trimmedQuery = query.trim();
+        
+        return SELECT_PATTERN.matcher(trimmedQuery).find() ||
+               INSERT_PATTERN.matcher(trimmedQuery).find() ||
+               UPDATE_PATTERN.matcher(trimmedQuery).find() ||
+               DELETE_PATTERN.matcher(trimmedQuery).find() ||
+               DDL_PATTERN.matcher(trimmedQuery).find();
+    }
+    
+    public boolean isSafeQuery(String query) {
+        if (!isValidQuery(query)) {
+            return false;
+        }
+        
+        String upperQuery = query.toUpperCase();
+        
+        // Block potentially dangerous operations
+        return !upperQuery.contains("DROP DATABASE") &&
+               !upperQuery.contains("DROP SCHEMA") &&
+               !upperQuery.contains("TRUNCATE") &&
+               !upperQuery.contains("DELETE FROM") || upperQuery.contains("WHERE");
+    }
+    
+    public String getQueryType(String query) {
+        if (SELECT_PATTERN.matcher(query).find()) return "SELECT";
+        if (INSERT_PATTERN.matcher(query).find()) return "INSERT";
+        if (UPDATE_PATTERN.matcher(query).find()) return "UPDATE";
+        if (DELETE_PATTERN.matcher(query).find()) return "DELETE";
+        if (DDL_PATTERN.matcher(query).find()) return "DDL";
+        return "UNKNOWN";
+    }
+}

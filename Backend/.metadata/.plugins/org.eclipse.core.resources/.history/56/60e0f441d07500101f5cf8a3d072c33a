@@ -1,0 +1,19 @@
+package com.datalingo.one.dto;
+
+class QueryExecutionRequest {
+    private String naturalLanguageQuery;
+    private String databaseId;
+    private DatabaseType databaseType;
+    
+    // Getters and Setters
+    public String getNaturalLanguageQuery() { return naturalLanguageQuery; }
+    public void setNaturalLanguageQuery(String naturalLanguageQuery) { 
+        this.naturalLanguageQuery = naturalLanguageQuery; 
+    }
+    
+    public String getDatabaseId() { return databaseId; }
+    public void setDatabaseId(String databaseId) { this.databaseId = databaseId; }
+    
+    public DatabaseType getDatabaseType() { return databaseType; }
+    public void setDatabaseType(DatabaseType databaseType) { this.databaseType = databaseType; }
+}

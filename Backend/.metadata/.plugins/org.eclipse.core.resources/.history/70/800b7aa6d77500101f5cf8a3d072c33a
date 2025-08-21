@@ -1,0 +1,47 @@
+package com.datalingo.one.dto;
+
+
+class QueryExecutionResponse {
+    private boolean success;
+    private String generatedQuery;
+    private String queryType;
+    private QueryExecutionResult executionResult;
+    private Object generationMetadata;
+    private long totalProcessingTimeMs;
+    private String errorMessage;
+    
+    public static QueryExecutionResponse error(String errorMessage) {
+        QueryExecutionResponse response = new QueryExecutionResponse();
+        response.setSuccess(false);
+        response.setErrorMessage(errorMessage);
+        return response;
+    }
+    
+    // Getters and Setters
+    public boolean isSuccess() { return success; }
+    public void setSuccess(boolean success) { this.success = success; }
+    
+    public String getGeneratedQuery() { return generatedQuery; }
+    public void setGeneratedQuery(String generatedQuery) { this.generatedQuery = generatedQuery; }
+    
+    public String getQueryType() { return queryType; }
+    public void setQueryType(String queryType) { this.queryType = queryType; }
+    
+    public QueryExecutionResult getExecutionResult() { return executionResult; }
+    public void setExecutionResult(QueryExecutionResult executionResult) { 
+        this.executionResult = executionResult; 
+    }
+    
+    public Object getGenerationMetadata() { return generationMetadata; }
+    public void setGenerationMetadata(Object generationMetadata) { 
+        this.generationMetadata = generationMetadata; 
+    }
+    
+    public long getTotalProcessingTimeMs() { return totalProcessingTimeMs; }
+    public void setTotalProcessingTimeMs(long totalProcessingTimeMs) { 
+        this.totalProcessingTimeMs = totalProcessingTimeMs; 
+    }
+    
+    public String getErrorMessage() { return errorMessage; }
+    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+}

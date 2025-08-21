@@ -1,0 +1,15 @@
+package com.datalingo.one.config;
+
+public enum DatabaseType {
+    MYSQL("mysql"),
+    POSTGRESQL("postgresql"),
+    MONGODB("mongodb"),
+    EXCEL("excel"),
+    CSV("csv");
+    
+    private final String value;
+    
+    DatabaseType(String value) {
+        this.value = value;
+    }
+}

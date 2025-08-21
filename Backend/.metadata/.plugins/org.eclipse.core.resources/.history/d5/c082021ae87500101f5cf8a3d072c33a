@@ -1,0 +1,40 @@
+package com.datalingo.one.service;
+
+import com.datalingo.one.client.DataSourceServiceClient;
+import com.datalingo.one.model.dto.DataSourceConnectionDto;
+import com.datalingo.one.model.dto.TableSchema;
+import com.datalingo.one.model.entity.ProcessedFile;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class DataSourceIntegrationService {
+    
+    @Autowired
+    private DataSourceServiceClient dataSourceServiceClient;
+    
+    /**
+     * Register processed file as a data source
+     */
+    public void registerDataSource(ProcessedFile processedFile) throws Exception {
+        try {
+            // Create schema info
+            TableSchema schema = new TableSchema();
+            schema.setTableName(processedFile.getTableName());
+            schema.setRowCount(processedFile.getRowCount());
+            
+            // Create data source connection DTO
+            DataSourceConnectionDto connectionDto = new DataSourceConnectionDto();
+            connectionDto.setName(processedFile.getOriginalFileName());
+            connectionDto.setType("FILE_BASED");
+            connectionDto.setSchema(schema);
+            connectionDto.setFileId(processedFile.getId().toString());
+            
+            // Register with DataSource Service
+            dataSourceServiceClient.createDataSource(connectionDto);
+            
+        } catch (Exception e) {
+            throw new Exception("Failed to register data source: " + e.getMessage(), e);
+        }
+    }
+}

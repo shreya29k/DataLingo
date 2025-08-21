@@ -1,0 +1,58 @@
+package com.datalingo.one.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.util.List;
+import java.util.Map;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class QueryRequest {
+    
+    @NotBlank(message = "Natural language query is required")
+    @JsonProperty("natural_query")
+    private String naturalQuery;
+    
+    @NotNull(message = "Database type is required")
+    @JsonProperty("database_type")
+    private DatabaseType databaseType;
+    
+    @JsonProperty("tables_or_collections")
+    private List<String> tablesOrCollections;
+    
+    @JsonProperty("schema_info")
+    private Map<String, Object> schemaInfo;
+    
+    @JsonProperty("sample_data")
+    private Map<String, Object> sampleData;
+    
+    @JsonProperty("connection_id")
+    private String connectionId;
+    
+    @JsonProperty("connection_params")
+    private ConnectionParams connectionParams;
+    
+    @JsonProperty("additional_context")
+    private Map<String, String> additionalContext;
+    
+    private Map<String, Object> parameters;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ConnectionParams {
+        private String host;
+        private Integer port;
+        private String database;
+        private String username;
+        private String password;
+    }
+}

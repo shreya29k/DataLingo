@@ -1,0 +1,18 @@
+package com.datalingo.one.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+import lombok.Data;
+
+@Configuration
+@ConfigurationProperties(prefix = "mistral")
+@Data
+public class MistralConfig {
+    
+    private String baseUrl = "http://localhost:11434";
+    private String modelName = "mistral:7b";
+    private int timeoutSeconds = 60;
+    private int maxRetries = 3;
+    private boolean enableCaching = true;
+    private int cacheExpirationMinutes = 30;
+}

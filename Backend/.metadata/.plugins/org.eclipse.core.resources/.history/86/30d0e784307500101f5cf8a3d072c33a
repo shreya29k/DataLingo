@@ -1,0 +1,44 @@
+
+
+package com.datalingo.one.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public class QueryRequest {
+    @JsonProperty("naturalLanguageQuery")
+    private String naturalLanguageQuery;
+    
+    @JsonProperty("tableSchema")
+    private String tableSchema;
+    
+    public QueryRequest() {}
+    
+    public QueryRequest(String naturalLanguageQuery, String tableSchema) {
+        this.naturalLanguageQuery = naturalLanguageQuery;
+        this.tableSchema = tableSchema;
+    }
+    
+    public String getNaturalLanguageQuery() {
+        return naturalLanguageQuery;
+    }
+    
+    public void setNaturalLanguageQuery(String naturalLanguageQuery) {
+        this.naturalLanguageQuery = naturalLanguageQuery;
+    }
+    
+    public String getTableSchema() {
+        return tableSchema;
+    }
+    
+    public void setTableSchema(String tableSchema) {
+        this.tableSchema = tableSchema;
+    }
+    
+    @Override
+    public String toString() {
+        return "QueryRequest{" +
+                "naturalLanguageQuery='" + naturalLanguageQuery + '\'' +
+                ", tableSchema='" + tableSchema + '\'' +
+                '}';
+    }
+}

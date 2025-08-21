@@ -1,0 +1,15 @@
+package com.datalingo.one.service.impl;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import com.datalingo.one.service.QueryExecutorService;
+
+public class MongoQueryExecutor implements QueryExecutorService {
+
+	@Override
+	public QueryResponse executeQuery(QueryRequest request) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+}

@@ -1,0 +1,19 @@
+package com.datalingo.one.dto;
+
+//import java.util.Map;
+//
+public class QueryRequest {
+//    private String query;
+//    private String databaseType;
+//    private Map<String, Object> metadata;
+//    
+//    // Getters and setters
+//    public String getQuery() { return query; }
+//    public void setQuery(String query) { this.query = query; }
+//    
+//    public String getDatabaseType() { return databaseType; }
+//    public void setDatabaseType(String databaseType) { this.databaseType = databaseType; }
+//    
+//    public Map<String, Object> getMetadata() { return metadata; }
+//    public void setMetadata(Map<String, Object> metadata) { this.metadata = metadata; }
+}

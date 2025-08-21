@@ -1,0 +1,53 @@
+package com.datalingo.one.controller;
+
+
+
+import com.datalingo.one.DTO.LoginRequest;
+import com.datalingo.one.DTO.RegisterRequest;
+import com.datalingo.one.entity.User;
+import com.datalingo.one.service.UserService;
+import com.datalingo.one.util.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/auth")
+public class AuthController {
+
+ @Autowired
+ private AuthenticationManager authManager;
+
+ @Autowired
+ private UserService userService;
+
+ @Autowired
+ private JwtUtil jwtUtil;
+
+ @PostMapping("/register")
+ public String register(@RequestBody User user) {
+     userService.save(user);
+     return "User registered";
+ }
+
+ @PostMapping("/login")
+ public String login(@RequestBody User user) {
+     Authentication auth = authManager.authenticate(
+             new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
+     return jwtUtil.generateToken(user.getUsername());
+ }
+// @PostMapping("/login")
+// public ResponseEntity<?> login(@RequestBody LoginRequest loginDto) {
+//     System.out.println("Login called"); // Add this debug print
+//     return ResponseEntity.ok("Login success"); // Replace with actual login response
+// }
+//
+// @PostMapping("/register")
+// public ResponseEntity<?> register(@RequestBody RegisterRequest registerDto) {
+//     System.out.println("Register called");
+//     return ResponseEntity.ok("Registered");
+// }
+}
+

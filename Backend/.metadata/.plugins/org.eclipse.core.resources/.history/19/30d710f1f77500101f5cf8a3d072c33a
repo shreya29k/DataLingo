@@ -1,0 +1,32 @@
+package com.datalingo.one.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+@Configuration
+public class ServiceDiscoveryConfig {
+    
+    @Value("${app.services.query-processing.instances:http://localhost:8081}")
+    private List<String> queryProcessingInstances;
+    
+    private final AtomicInteger currentIndex = new AtomicInteger(0);
+    
+    /**
+     * Simple round-robin load balancing
+     */
+    public String getNextQueryProcessingInstance() {
+        if (queryProcessingInstances.isEmpty()) {
+            return "http://localhost:8081";
+        }
+        
+        int index = currentIndex.getAndIncrement() % queryProcessingInstances.size();
+        return queryProcessingInstances.get(index);
+    }
+    
+    public List<String> getAllInstances() {
+        return queryProcessingInstances;
+    }
+}

@@ -1,0 +1,52 @@
+spring.application.name=AUTH-SERVICE
+
+server.port=8082
+
+debug=true
+
+# Database Configuration (MySQL)
+spring.datasource.url=jdbc:postgresql://localhost:5432/auth_db
+spring.datasource.username=postgres
+spring.datasource.password=2529
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# JPA/Hibernate Configuration
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+# JWT Configuration
+jwt.secret=mySecretKey123456789012345678901234567890
+jwt.expiration=86400000
+
+# Eureka Configuration
+eureka.client.fetch-registry=true
+eureka.client.register-with-eureka=true
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+eureka.instance.prefer-ip-address=true
+
+# Logging Configuration
+logging.level.com.datalingo=DEBUG
+logging.level.org.springframework.security=DEBUG
+logging.level.org.hibernate.SQL=DEBUG
+
+# Management Endpoints
+management.endpoints.web.exposure.include=health,info
+management.endpoint.health.show-details=always
+management.server.port=8082
+
+# Security Configuration
+spring.security.user.name=admin
+spring.security.user.password=admin123
+
+# CORS Configuration
+cors.allowed-origins=http://localhost:5173,http://localhost:3000
+cors.allowed-methods=GET,POST,PUT,DELETE,OPTIONS
+cors.allowed-headers=*
+cors.allow-credentials=true
+
+# Connection Pool Settings
+spring.datasource.hikari.maximum-pool-size=20
+spring.datasource.hikari.minimum-idle=5
+spring.datasource.hikari.connection-timeout=60000

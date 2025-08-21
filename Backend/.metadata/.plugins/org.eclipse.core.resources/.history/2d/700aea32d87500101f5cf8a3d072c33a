@@ -1,0 +1,33 @@
+package com.datalingo.one.service;
+
+import org.springframework.stereotype.Component;
+
+import com.datalingo.one.service.impl.MongoQueryExecutor;
+import com.datalingo.one.service.impl.MySQLQueryExecutor;
+import com.datalingo.one.service.impl.PostgresQueryExecutor;
+
+@Component
+public class QueryExecutorFactory {
+	
+	private final MySQLQueryExecutor mySQLQueryExecutor;
+    private final PostgresQueryExecutor postgresQueryExecutor;
+    private final MongoQueryExecutor mongoQueryExecutor;
+
+    public QueryExecutorFactory(MySQLQueryExecutor mySQLQueryExecutor,
+                                PostgresQueryExecutor postgresQueryExecutor,
+                                MongoQueryExecutor mongoQueryExecutor) {
+        this.mySQLQueryExecutor = mySQLQueryExecutor;
+        this.postgresQueryExecutor = postgresQueryExecutor;
+        this.mongoQueryExecutor = mongoQueryExecutor;
+    }
+
+    public QueryExecutorService getExecutor(String type) {
+        return switch (type.toUpperCase()) {
+            case "MYSQL" -> mySQLQueryExecutor;
+            case "POSTGRES" -> postgresQueryExecutor;
+            case "MONGO" -> mongoQueryExecutor;
+            default -> throw new IllegalArgumentException("Unsupported data source type: " + type);
+        };
+    }
+
+}

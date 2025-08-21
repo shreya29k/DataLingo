@@ -1,0 +1,16 @@
+spring.application.name=query-processing-service
+
+
+openai.api.url=https://api.openai.com/v1/chat/completions
+openai.api.key=${OPENAI_API_KEY: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}
+
+
+server.port=8086
+
+eureka.client.fetch-registry=true
+eureka.client.register-with-eureka=true
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+
+
+# Optional
+eureka.instance.prefer-ip-address=true

@@ -1,0 +1,7 @@
+package com.datalingo.one.service;
+
+public interface QueryProcessingService {
+	
+	 String processQuery(String naturalLanguageQuery, String tableSchema);
+
+}

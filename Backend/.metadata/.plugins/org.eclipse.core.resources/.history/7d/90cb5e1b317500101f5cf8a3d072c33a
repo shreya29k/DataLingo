@@ -1,0 +1,30 @@
+
+
+package com.datalingo.one.dto;
+
+import lombok.Data;
+import lombok.Builder;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.util.List;
+import java.util.Map;
+
+@Data
+@Builder
+public class QueryRequest {
+    @NotBlank(message = "Natural language query is required")
+    private String naturalQuery;
+    
+    @NotNull(message = "Database type is required")
+    private DatabaseType databaseType;
+    
+    @NotNull(message = "Tables/collections list is required")
+    private List<String> tablesOrCollections;
+    
+    @NotNull(message = "Schema information is required")
+    private Map<String, Object> schemaInfo;
+    
+    private Map<String, Object> sampleData;
+    private String connectionId;
+    private Map<String, String> additionalContext;
+}

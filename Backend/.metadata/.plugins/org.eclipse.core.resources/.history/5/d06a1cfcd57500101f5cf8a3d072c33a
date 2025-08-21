@@ -1,0 +1,25 @@
+
+
+
+server.port=8084
+spring.application.name=data-source-service
+
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/cdac
+spring.datasource.username=postgres
+spring.datasource.password=2529
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+
+spring.jpa.hibernate.ddl-auto=none
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+# Eureka settings
+eureka.client.fetch-registry=true
+eureka.client.register-with-eureka=true
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+
+
+# Optional
+eureka.instance.prefer-ip-address=true

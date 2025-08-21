@@ -1,0 +1,51 @@
+// GptQueryService.java
+package com.datalingo.one.service.impl;
+
+import com.datalingo.one.dto.OpenAiRequest;
+import com.datalingo.one.dto.OpenAiResponse;
+import com.datalingo.one.config.OpenAIConfig;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.*;
+
+import java.util.Collections;
+
+@Service
+public class GptQueryService implements QueryProcessingService {
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Autowired
+    private OpenAiConfig openAiConfig;
+
+    private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+
+    @Override
+    public String processQuery(String naturalLanguageQuery, String tableSchema) {
+        String prompt = String.format(
+            "Convert the following natural language query into an SQL query. " +
+            "Table schema: %s. Query: %s",
+            tableSchema, naturalLanguageQuery
+        );
+
+        OpenAiRequest.Message message = new OpenAiRequest.Message("user", prompt);
+        OpenAiRequest request = new OpenAiRequest("gpt-4", Collections.singletonList(message));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(openAiConfig.getApiKey());
+
+        HttpEntity<OpenAiRequest> entity = new HttpEntity<>(request, headers);
+
+        ResponseEntity<OpenAiResponse> response = restTemplate.exchange(
+            OPENAI_URL,
+            HttpMethod.POST,
+            entity,
+            OpenAiResponse.class
+        );
+
+        return response.getBody().getChoices().get(0).getMessage().getContent();
+    }
+}

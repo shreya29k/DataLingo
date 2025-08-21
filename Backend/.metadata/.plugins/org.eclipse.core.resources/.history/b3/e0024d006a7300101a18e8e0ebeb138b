@@ -1,0 +1,16 @@
+package com.datalingo.one.service.impl;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import com.datalingo.one.service.QueryExecutorService;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PostgresQueryExecutor implements QueryExecutorService {
+
+    @Override
+    public QueryResponse executeQuery(QueryRequest request) {
+        // actual Postgres execution logic here
+        return new QueryResponse(null); // dummy response for now
+    }
+}

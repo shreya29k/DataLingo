@@ -1,0 +1,45 @@
+package com.datalingo.one.service.impl;
+
+import java.sql.Connection;
+import java.sql.*;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import com.datalingo.one.service.QueryExecutorService;
+
+@Service
+public class MySQLQueryExecutor implements QueryExecutorService {
+
+    @Override
+    public QueryResponse executeQuery(QueryRequest request) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(
+                "jdbc:mysql://" + request.getHost() + "/" + request.getDbName(),
+                request.getUsername(), request.getPassword());
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(request.getQuery())) {
+
+            ResultSetMetaData metaData = rs.getMetaData();
+            while (rs.next()) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                for (int i = 1; i <= metaData.getColumnCount(); i++) {
+                    row.put(metaData.getColumnName(i), rs.getObject(i));
+                }
+                result.add(row);
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("MySQL query execution failed", e);
+        }
+
+        return new QueryResponse(result);
+    }
+}

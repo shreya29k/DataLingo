@@ -1,0 +1,16 @@
+<svg
+  width="48"
+  height="48"
+  viewBox="0 0 200 200"
+  xmlns="http://www.w3.org/2000/svg"
+  preserveAspectRatio="xMidYMid meet"
+>
+  <!-- Chat bubble -->
+  <rect x="20" y="20" rx="20" ry="20" width="160" height="140" fill="#9B5BC9" />
+  <polygon points="80,160 100,160 90,180" fill="#9B5BC9" />
+
+  <!-- Text boxes -->
+  <rect x="30" y="40" rx="8" ry="8" width="80" height="20" fill="#D3BDF0" />
+  <rect x="90" y="70" rx="8" ry="8" width="80" height="20" fill="#D3BDF0" />
+  <rect x="30" y="100" rx="8" ry="8" width="80" height="20" fill="#D3BDF0" />
+</svg>

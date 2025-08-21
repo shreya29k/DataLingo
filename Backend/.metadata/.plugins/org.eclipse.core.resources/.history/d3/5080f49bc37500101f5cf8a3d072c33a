@@ -1,0 +1,83 @@
+package com.datalingo.one.service;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.BodyInserters;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.datalingo.one.config.MistralConfig;
+import com.fasterxml.jackson.databind.JsonNode;
+import reactor.core.publisher.Mono;
+import lombok.extern.slf4j.Slf4j;
+
+import java.time.Duration;
+import java.util.Map;
+import java.util.HashMap;
+
+@Service
+@Slf4j
+public class MistralApiClient {
+    
+    private final WebClient webClient;
+    private final MistralConfig config;
+    private final ObjectMapper objectMapper;
+    
+    public MistralApiClient(MistralConfig config, ObjectMapper objectMapper) {
+        this.config = config;
+        this.objectMapper = objectMapper;
+        this.webClient = WebClient.builder()
+            .baseUrl(config.getBaseUrl())
+            .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024)) // 10MB
+            .build();
+    }
+    
+    /**
+     * Send query to local Mistral model via Ollama API
+     */
+    public Mono<String> generateQuery(String prompt) {
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", config.getModelName());
+        requestBody.put("prompt", prompt);
+        requestBody.put("stream", false);
+        requestBody.put("options", Map.of(
+            "temperature", 0.1,
+            "top_p", 0.9,
+            "num_predict", 500
+        ));
+        
+        return webClient.post()
+            .uri("/api/generate")
+            .body(BodyInserters.fromValue(requestBody))
+            .retrieve()
+            .bodyToMono(String.class)
+            .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
+            .map(this::extractResponse)
+            .doOnError(error -> log.error("Error calling Mistral API: {}", error.getMessage()))
+            .onErrorResume(error -> {
+                log.error("Mistral API call failed", error);
+                return Mono.just("ERROR: Failed to generate query - " + error.getMessage());
+            });
+    }
+    
+    private String extractResponse(String jsonResponse) {
+        try {
+            JsonNode responseNode = objectMapper.readTree(jsonResponse);
+            return responseNode.get("response").asText();
+        } catch (Exception e) {
+            log.error("Error parsing Mistral response: {}", e.getMessage());
+            return "ERROR: Failed to parse response";
+        }
+    }
+    
+    /**
+     * Check if Mistral service is healthy
+     */
+    public Mono<Boolean> checkHealth() {
+        return webClient.get()
+            .uri("/api/tags")
+            .retrieve()
+            .bodyToMono(String.class)
+            .map(response -> response.contains(config.getModelName()))
+            .timeout(Duration.ofSeconds(5))
+            .onErrorReturn(false);
+    }
+}

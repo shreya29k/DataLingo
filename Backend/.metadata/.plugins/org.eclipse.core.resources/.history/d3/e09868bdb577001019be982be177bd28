@@ -1,0 +1,36 @@
+package com.datalingo.one.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+
+import javax.sql.DataSource;
+import java.util.List;
+
+@Service
+public class databaseService {
+
+    private final JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    public databaseService(DataSource dataSource) {
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    }
+
+    public List<String> fetchTables(String databaseType) {
+        String query;
+
+        switch (databaseType.toUpperCase()) {
+            case "MYSQL":
+                query = "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()";
+                break;
+            case "POSTGRESQL":
+                query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported database type: " + databaseType);
+        }
+
+        return jdbcTemplate.queryForList(query, String.class);
+    }
+}

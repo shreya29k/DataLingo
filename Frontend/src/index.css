@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+}
+
+/* Dark mode support */
+.dark {
+  background-color: #000;
+  color: white;
+}
+
+/* Light mode support */
+.light {
+  background-color: #fff;
+  color: black;
+}
+
+html {
+  scroll-behavior: smooth;
+}

@@ -1,0 +1,51 @@
+package com.datalingo.one.config;
+
+import java.util.List;
+
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.CorsWebFilter;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+
+@Configuration
+public class GatewayConfig {
+
+	@Bean
+	public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+	    return builder.routes()
+	            // Query Processing Service routes - NEW
+	            .route("query-processing-execute", r -> r.path("/api/query/execute")
+	                    .uri("http://localhost:8086/api/v1/query/execute"))
+	            .route("query-processing-generate", r -> r.path("/api/query/generate") 
+	                    .uri("http://localhost:8086/api/v1/query/generate"))
+	            
+	            // Existing routes
+	            .route("auth-service", r -> r.path("/api/auth/**")
+	                   .uri("http://localhost:8080"))
+	            .route("datasource-service", r -> r.path("/api/datasource/**")
+	                    .uri("http://localhost:8082"))
+	            .route("file-processing-service", r -> r.path("/api/files/**")
+	                    .uri("http://localhost:8088"))
+	            .route("analytics-service", r -> r.path("/api/analytics/**")
+	                    .uri("http://localhost:8084"))
+	            .build();
+	}
+
+	@Bean
+	public CorsWebFilter corsWebFilter() {
+	    CorsConfiguration corsConfig = new CorsConfiguration();
+	    corsConfig.setAllowedOriginPatterns(List.of("http://localhost:*")); // wildcard for dev ports
+	    corsConfig.addAllowedHeader("*");
+	    corsConfig.addAllowedMethod("*");
+	    corsConfig.setAllowCredentials(true);
+
+	    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+	    source.registerCorsConfiguration("/**", corsConfig);
+
+	    return new CorsWebFilter(source);
+	}
+
+}

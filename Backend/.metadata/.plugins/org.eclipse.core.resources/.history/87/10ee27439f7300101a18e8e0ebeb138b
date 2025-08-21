@@ -1,0 +1,178 @@
+package com.datalingo.one.service;
+
+import com.datalingo.one.config.OpenAIConfig;
+import com.datalingo.one.dto.OpenAiRequest;
+import com.datalingo.one.dto.OpenAiResponse;
+import com.datalingo.one.service.QueryToSqlConverter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Collections;
+import java.util.List;
+
+@Component
+public class OpenAIQueryToSqlConverter implements QueryToSqlConverter {
+    
+    private static final Logger logger = LoggerFactory.getLogger(OpenAIQueryToSqlConverter.class);
+    
+    private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+    private static final String DEFAULT_MODEL = "gpt-3.5-turbo";
+    private static final int DEFAULT_MAX_TOKENS = 500;
+    private static final double DEFAULT_TEMPERATURE = 0.1;
+    
+    @Autowired
+    private RestTemplate restTemplate;
+    
+    @Autowired
+    private OpenAIConfig openAiConfig;
+    
+    @Override
+    public String convertToSql(String naturalLanguageQuery, String tableSchema) {
+        validateInputs(naturalLanguageQuery, tableSchema);
+        
+        try {
+            logger.debug("Converting query: '{}' with schema: '{}'", naturalLanguageQuery, tableSchema);
+            
+            String prompt = buildSystemPrompt(naturalLanguageQuery, tableSchema);
+            OpenAiRequest request = createOpenAiRequest(prompt);
+            
+            HttpEntity<OpenAiRequest> entity = createHttpEntity(request);
+            
+            ResponseEntity<OpenAiResponse> response = restTemplate.exchange(
+                OPENAI_URL, HttpMethod.POST, entity, OpenAiResponse.class);
+            
+            return processResponse(response);
+            
+        } catch (RestClientException e) {
+            logger.error("Error calling OpenAI API for query conversion", e);
+            throw new RuntimeException("Failed to convert query using OpenAI: " + e.getMessage(), e);
+        } catch (Exception e) {
+            logger.error("Unexpected error during query conversion", e);
+            throw new RuntimeException("Query conversion failed: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public boolean isConfigured() {
+        return openAiConfig != null && 
+               openAiConfig.getApiKey() != null && 
+               !openAiConfig.getApiKey().trim().isEmpty() &&
+               !openAiConfig.getApiKey().equals("your-openai-api-key-here");
+    }
+    
+    private void validateInputs(String naturalLanguageQuery, String tableSchema) {
+        if (naturalLanguageQuery == null || naturalLanguageQuery.trim().isEmpty()) {
+            throw new IllegalArgumentException("Natural language query cannot be null or empty");
+        }
+        
+        if (tableSchema == null || tableSchema.trim().isEmpty()) {
+            logger.warn("Table schema is empty, proceeding with generic conversion");
+        }
+        
+        if (!isConfigured()) {
+            throw new RuntimeException("OpenAI API key is not properly configured");
+        }
+    }
+    
+    private String buildSystemPrompt(String naturalLanguageQuery, String tableSchema) {
+        StringBuilder promptBuilder = new StringBuilder();
+        
+        promptBuilder.append("You are an expert SQL generator. Convert the following natural language query into a valid SQL query.\n\n");
+        
+        if (tableSchema != null && !tableSchema.trim().isEmpty()) {
+            promptBuilder.append("Database Schema:\n")
+                        .append(tableSchema)
+                        .append("\n\n");
+        }
+        
+        promptBuilder.append("Natural Language Query: ")
+                    .append(naturalLanguageQuery)
+                    .append("\n\n");
+        
+        promptBuilder.append("Requirements:\n")
+                    .append("1. Return ONLY the SQL query, no explanations or markdown formatting\n")
+                    .append("2. Use standard SQL syntax\n")
+                    .append("3. Ensure the query is syntactically correct\n")
+                    .append("4. Use appropriate table and column names based on the schema\n")
+                    .append("5. End the query with a semicolon\n\n")
+                    .append("SQL Query:");
+        
+        return promptBuilder.toString();
+    }
+    
+    private OpenAiRequest createOpenAiRequest(String prompt) {
+        OpenAiRequest.Message systemMessage = new OpenAiRequest.Message("system", 
+            "You are a SQL expert. Generate only valid SQL queries without any explanations.");
+        OpenAiRequest.Message userMessage = new OpenAiRequest.Message("user", prompt);
+        
+        List<OpenAiRequest.Message> messages = List.of(systemMessage, userMessage);
+        
+        OpenAiRequest request = new OpenAiRequest(DEFAULT_MODEL, messages);
+        request.setMaxTokens(DEFAULT_MAX_TOKENS);
+        request.setTemperature(DEFAULT_TEMPERATURE);
+        
+        return request;
+    }
+    
+    private HttpEntity<OpenAiRequest> createHttpEntity(OpenAiRequest request) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(openAiConfig.getApiKey());
+        
+        return new HttpEntity<>(request, headers);
+    }
+    
+    private String processResponse(ResponseEntity<OpenAiResponse> response) {
+        if (response.getStatusCode() != HttpStatus.OK) {
+            throw new RuntimeException("OpenAI API returned status: " + response.getStatusCode());
+        }
+        
+        OpenAiResponse openAiResponse = response.getBody();
+        if (openAiResponse == null) {
+            throw new RuntimeException("Empty response from OpenAI API");
+        }
+        
+        if (openAiResponse.getChoices() == null || openAiResponse.getChoices().isEmpty()) {
+            throw new RuntimeException("No choices returned from OpenAI API");
+        }
+        
+        String sqlQuery = openAiResponse.getChoices().get(0).getMessage().getContent();
+        if (sqlQuery == null || sqlQuery.trim().isEmpty()) {
+            throw new RuntimeException("Empty SQL query returned from OpenAI");
+        }
+        
+        String cleanedQuery = cleanSqlQuery(sqlQuery);
+        logger.info("Successfully converted to SQL: {}", cleanedQuery);
+        
+        return cleanedQuery;
+    }
+    
+    private String cleanSqlQuery(String sqlQuery) {
+        if (sqlQuery == null) {
+            return "";
+        }
+        
+        // Remove markdown code blocks
+        sqlQuery = sqlQuery.replaceAll("```sql", "")
+                          .replaceAll("```", "")
+                          .trim();
+        
+        // Remove common prefixes
+        if (sqlQuery.toLowerCase().startsWith("sql query:")) {
+            sqlQuery = sqlQuery.substring("sql query:".length()).trim();
+        }
+        
+        // Ensure it ends with semicolon
+        if (!sqlQuery.endsWith(";")) {
+            sqlQuery += ";";
+        }
+        
+        return sqlQuery;
+    }
+}

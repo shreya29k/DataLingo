@@ -1,0 +1,23 @@
+package com.datalingo.one.dto;
+
+class QueryProcessingMessage {
+    private String requestId;
+    private String naturalLanguageQuery;
+    private String databaseType;
+    private long timestamp;
+    
+    // Getters and setters
+    public String getRequestId() { return requestId; }
+    public void setRequestId(String requestId) { this.requestId = requestId; }
+    
+    public String getNaturalLanguageQuery() { return naturalLanguageQuery; }
+    public void setNaturalLanguageQuery(String naturalLanguageQuery) { 
+        this.naturalLanguageQuery = naturalLanguageQuery; 
+    }
+    
+    public String getDatabaseType() { return databaseType; }
+    public void setDatabaseType(String databaseType) { this.databaseType = databaseType; }
+    
+    public long getTimestamp() { return timestamp; }
+    public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
+}

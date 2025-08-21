@@ -1,0 +1,50 @@
+package com.datalingo.one.controller;
+
+import com.datalingo.one.client.QueryProcessingServiceClient;
+import com.datalingo.one.service.DataSourceService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/health")
+public class HealthController {
+    
+    @Autowired
+    private QueryProcessingServiceClient queryProcessingClient;
+    
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> getServiceStatus() {
+        Map<String, Object> status = new HashMap<>();
+        
+        // Check query processing service
+        boolean qpServiceHealthy = queryProcessingClient.testConnection();
+        
+        status.put("dataSourceService", "UP");
+        status.put("queryProcessingService", qpServiceHealthy ? "UP" : "DOWN");
+        status.put("overall", qpServiceHealthy ? "UP" : "DEGRADED");
+        status.put("timestamp", System.currentTimeMillis());
+        
+        return ResponseEntity.ok(status);
+    }
+    
+    @GetMapping("/dependencies")
+    public ResponseEntity<Map<String, Object>> getDependencyStatus() {
+        Map<String, Object> dependencies = new HashMap<>();
+        
+        // Test external services
+        boolean qpService = queryProcessingClient.testConnection();
+        
+        dependencies.put("queryProcessingService", Map.of(
+            "status", qpService ? "UP" : "DOWN",
+            "url", "Query Processing Service"
+        ));
+        
+        return ResponseEntity.ok(dependencies);
+    }
+}

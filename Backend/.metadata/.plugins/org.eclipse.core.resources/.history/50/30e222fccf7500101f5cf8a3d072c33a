@@ -1,0 +1,13 @@
+package com.datalingo.one.dto;
+
+public class ConnectionTestRequest {
+    private String databaseId;
+    private DatabaseType databaseType;
+    
+    // Getters and Setters
+    public String getDatabaseId() { return databaseId; }
+    public void setDatabaseId(String databaseId) { this.databaseId = databaseId; }
+    
+    public DatabaseType getDatabaseType() { return databaseType; }
+    public void setDatabaseType(DatabaseType databaseType) { this.databaseType = databaseType; }
+}

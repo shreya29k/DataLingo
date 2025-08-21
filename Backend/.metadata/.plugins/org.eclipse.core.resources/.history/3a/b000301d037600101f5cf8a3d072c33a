@@ -1,0 +1,55 @@
+package com.datalingo.one.controller;
+
+	import com.datalingo.one.dto.ExecutionRequest;
+	import com.datalingo.one.dto.ExecutionResponse;
+	import com.datalingo.one.dto.QueryRequest;
+	import com.datalingo.one.service.DataSourceService;
+	import lombok.RequiredArgsConstructor;
+	import lombok.extern.slf4j.Slf4j;
+	import org.springframework.http.ResponseEntity;
+	import org.springframework.web.bind.annotation.*;
+
+	import jakarta.validation.Valid;
+
+	@RestController
+	@RequestMapping("/api/datasource")
+	@RequiredArgsConstructor
+	@Slf4j
+	@CrossOrigin(origins = "*")
+	public class DataSourceController {
+
+	    private final DataSourceService dataSourceService;
+
+	    @PostMapping("/query/prompt")
+	    public ResponseEntity<ExecutionResponse> executeFromPrompt(@Valid @RequestBody QueryRequest request) {
+	        log.info("Received prompt-based query request: {}", request.getPrompt());
+	        
+	        ExecutionResponse response = dataSourceService.processPromptAndExecute(request);
+	        
+	        if (response.isSuccess()) {
+	            return ResponseEntity.ok(response);
+	        } else {
+	            return ResponseEntity.badRequest().body(response);
+	        }
+	    }
+
+	    @PostMapping("/query/execute")
+	    public ResponseEntity<ExecutionResponse> executeDirectQuery(@Valid @RequestBody ExecutionRequest request) {
+	        log.info("Received direct query execution request");
+	        
+	        ExecutionResponse response = dataSourceService.executeDirectQuery(request);
+	        
+	        if (response.isSuccess()) {
+	            return ResponseEntity.ok(response);
+	        } else {
+	            return ResponseEntity.badRequest().body(response);
+	        }
+	    }
+
+	    @GetMapping("/health")
+	    public ResponseEntity<String> health() {
+	        return ResponseEntity.ok("DataSource Service is running");
+	    }
+	}
+
+

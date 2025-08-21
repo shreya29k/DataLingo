@@ -1,0 +1,224 @@
+//package com.datalingo.one.controller;
+//
+//import com.datalingo.one.dto.QueryRequest;
+//import com.datalingo.one.dto.QueryResponse;
+//import com.datalingo.one.service.QueryProcessingService;
+//import org.springframework.beans.factory.annotation.Autowired;
+//import org.springframework.http.HttpStatus;
+//import org.springframework.http.ResponseEntity;
+//import org.springframework.web.bind.annotation.*;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
+//
+//@RestController
+//@RequestMapping("/api/query")
+//@CrossOrigin(origins = "*")
+//public class QueryController {
+//    
+//    private static final Logger logger = LoggerFactory.getLogger(QueryController.class);
+//    
+//    @Autowired
+//    private QueryProcessingService queryProcessingService;
+//    
+//    @PostMapping("/execute")
+//    public ResponseEntity<QueryResponse> executeQuery(@RequestBody QueryRequest request) {
+//        try {
+//            logger.info("Received query request: {}", request.getNaturalLanguageQuery());
+//            
+//            // Input validation
+//            if (request == null) {
+//                logger.warn("Received null request");
+//                return ResponseEntity.badRequest()
+//                    .body(new QueryResponse(null, "Request cannot be null", false));
+//            }
+//            
+//            if (request.getNaturalLanguageQuery() == null || request.getNaturalLanguageQuery().trim().isEmpty()) {
+//                logger.warn("Received empty query");
+//                return ResponseEntity.badRequest()
+//                    .body(new QueryResponse(null, "Natural language query cannot be empty", false));
+//            }
+//            
+//            // Check if service is properly injected
+//            if (queryProcessingService == null) {
+//                logger.error("QueryProcessingService is null - dependency injection failed");
+//                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(new QueryResponse(null, "Service unavailable", false));
+//            }
+//            
+//            logger.info("Processing query with service: {}", queryProcessingService.getClass().getSimpleName());
+//            
+//            String sqlQuery = queryProcessingService.processQuery(
+//                request.getNaturalLanguageQuery(), 
+//                request.getTableSchema()
+//            );
+//            
+//            logger.info("Query processed successfully, generated SQL length: {}", 
+//                sqlQuery != null ? sqlQuery.length() : 0);
+//            
+//            QueryResponse response = new QueryResponse(sqlQuery, "Query processed successfully", true);
+//            return ResponseEntity.ok(response);
+//            
+//        } catch (IllegalArgumentException e) {
+//            logger.warn("Invalid input: {}", e.getMessage());
+//            QueryResponse errorResponse = new QueryResponse(null, 
+//                "Invalid input: " + e.getMessage(), false);
+//            return ResponseEntity.badRequest().body(errorResponse);
+//            
+//        } catch (RuntimeException e) {
+//            logger.error("Runtime error processing query: {}", e.getMessage(), e);
+//            QueryResponse errorResponse = new QueryResponse(null, 
+//                "Processing error: " + e.getMessage(), false);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+//            
+//        } catch (Exception e) {
+//            logger.error("Unexpected error processing query", e);
+//            QueryResponse errorResponse = new QueryResponse(null, 
+//                "Unexpected error: " + e.getMessage(), false);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+//        }
+//    }
+//    
+//    @GetMapping("/health")
+//    public ResponseEntity<String> healthCheck() {
+//        try {
+//            // Test if service is available
+//            if (queryProcessingService == null) {
+//                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+//                    .body("QueryProcessingService is not available");
+//            }
+//            
+//            return ResponseEntity.ok("Query Processing Service is running");
+//        } catch (Exception e) {
+//            logger.error("Health check failed", e);
+//            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+//                .body("Service health check failed: " + e.getMessage());
+//        }
+//    }
+//    
+//    // Global exception handler for this controller
+//    @ExceptionHandler(Exception.class)
+//    public ResponseEntity<QueryResponse> handleGlobalException(Exception e) {
+//        logger.error("Unhandled exception in QueryController", e);
+//        QueryResponse errorResponse = new QueryResponse(null, 
+//            "Internal server error: " + e.getMessage(), false);
+//        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+//    }
+//}
+package com.datalingo.one.controller;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import com.datalingo.one.service.QueryProcessingService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+
+@RestController
+@RequestMapping("/api/query")
+@CrossOrigin(origins = "*")
+public class QueryController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(QueryController.class);
+    
+    @Autowired
+    private QueryProcessingService queryProcessingService;
+    
+    @PostMapping("/execute")
+    public ResponseEntity<QueryResponse> executeQuery(@RequestBody QueryRequest request) {
+        try {
+            logger.info("Received query request: {}", request.getNaturalLanguageQuery());
+            
+            // Input validation
+            if (request == null) {
+                logger.warn("Received null request");
+                return ResponseEntity.badRequest()
+                    .body(new QueryResponse(null, "Request cannot be null", false));
+            }
+            
+            if (request.getNaturalLanguageQuery() == null || request.getNaturalLanguageQuery().trim().isEmpty()) {
+                logger.warn("Received empty query. Full request: {}", request);
+                return ResponseEntity.badRequest()
+                    .body(new QueryResponse(null, "Natural language query cannot be empty", false));
+            }
+            
+            // Check if service is properly injected
+            if (queryProcessingService == null) {
+                logger.error("QueryProcessingService is null - dependency injection failed");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new QueryResponse(null, "Service unavailable", false));
+            }
+            
+            logger.info("Processing query with service: {}", queryProcessingService.getClass().getSimpleName());
+            
+            String sqlQuery = queryProcessingService.processQuery(
+                request.getNaturalLanguageQuery(), 
+                request.getTableSchema()
+            );
+            
+            logger.info("Query processed successfully, generated SQL length: {}", 
+                sqlQuery != null ? sqlQuery.length() : 0);
+            
+            QueryResponse response = new QueryResponse(sqlQuery, "Query processed successfully", true);
+            return ResponseEntity.ok(response);
+            
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid input: {}", e.getMessage());
+            QueryResponse errorResponse = new QueryResponse(null, 
+                "Invalid input: " + e.getMessage(), false);
+            return ResponseEntity.badRequest().body(errorResponse);
+            
+        } catch (RuntimeException e) {
+            logger.error("Runtime error processing query: {}", e.getMessage(), e);
+            QueryResponse errorResponse = new QueryResponse(null, 
+                "Processing error: " + e.getMessage(), false);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            
+        } catch (Exception e) {
+            logger.error("Unexpected error processing query", e);
+            QueryResponse errorResponse = new QueryResponse(null, 
+                "Unexpected error: " + e.getMessage(), false);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+    
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        try {
+            // Test if service is available
+            if (queryProcessingService == null) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body("QueryProcessingService is not available");
+            }
+            
+            return ResponseEntity.ok("Query Processing Service is running");
+        } catch (Exception e) {
+            logger.error("Health check failed", e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body("Service health check failed: " + e.getMessage());
+        }
+    }
+    
+    @GetMapping("/debug/config")
+    public ResponseEntity<String> debugConfig(
+            @Value("${openai.api.key}") String apiKey) {
+        StringBuilder debug = new StringBuilder();
+        debug.append("API Key configured: ").append(apiKey != null && !apiKey.trim().isEmpty()).append("\n");
+        debug.append("API Key starts with: ").append(apiKey != null ? apiKey.substring(0, Math.min(15, apiKey.length())) : "null").append("\n");
+        debug.append("API Key resolved: ").append(!apiKey.startsWith("${")).append("\n");
+        debug.append("Environment OPENAI_API_KEY: ").append(System.getenv("OPENAI_API_KEY") != null).append("\n");
+        return ResponseEntity.ok(debug.toString());
+    }
+    
+    // Global exception handler for this controller
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<QueryResponse> handleGlobalException(Exception e) {
+        logger.error("Unhandled exception in QueryController", e);
+        QueryResponse errorResponse = new QueryResponse(null, 
+            "Internal server error: " + e.getMessage(), false);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+}

@@ -1,0 +1,46 @@
+package com.datalingo.one.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public class QueryResponse {
+    @JsonProperty("sqlQuery")
+    private String sqlQuery;
+    
+    @JsonProperty("message")
+    private String message;
+    
+    @JsonProperty("success")
+    private boolean success;
+    
+    public QueryResponse() {}
+    
+    public QueryResponse(String sqlQuery, String message, boolean success) {
+        this.sqlQuery = sqlQuery;
+        this.message = message;
+        this.success = success;
+    }
+    
+    public String getSqlQuery() {
+        return sqlQuery;
+    }
+    
+    public void setSqlQuery(String sqlQuery) {
+        this.sqlQuery = sqlQuery;
+    }
+    
+    public String getMessage() {
+        return message;
+    }
+    
+    public void setMessage(String message) {
+        this.message = message;
+    }
+    
+    public boolean isSuccess() {
+        return success;
+    }
+    
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+}

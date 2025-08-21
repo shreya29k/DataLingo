@@ -1,0 +1,75 @@
+package com.datalingo.one.service;
+
+import com.datalingo.one.dto.DatabaseConfig;
+import com.datalingo.one.dto.DatabaseType;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Service
+public class DatabaseConfigService {
+    
+    private final Map<String, DatabaseConfig> databaseConfigs = new HashMap<>();
+    
+    @Value("${app.database.default.host:localhost}")
+    private String defaultHost;
+    
+    @Value("${app.database.default.port:3306}")
+    private int defaultPort;
+    
+    public DatabaseConfigService() {
+        // Initialize with some default configurations
+        // In production, these would come from a database or configuration file
+        initializeDefaultConfigs();
+    }
+    
+    private void initializeDefaultConfigs() {
+        // Example MySQL configuration
+        DatabaseConfig mysqlConfig = new DatabaseConfig(
+            "mysql-default",
+            "localhost",
+            3306,
+            "testdb",
+            "root",
+            "password",
+            DatabaseType.MYSQL
+        );
+        mysqlConfig.setName("Default MySQL Database");
+        databaseConfigs.put("mysql-default", mysqlConfig);
+        
+        // Example PostgreSQL configuration
+        DatabaseConfig pgConfig = new DatabaseConfig(
+            "postgres-default",
+            "localhost",
+            5432,
+            "testdb",
+            "postgres",
+            "password",
+            DatabaseType.POSTGRESQL
+        );
+        pgConfig.setName("Default PostgreSQL Database");
+        databaseConfigs.put("postgres-default", pgConfig);
+    }
+    
+    public DatabaseConfig getDatabaseConfig(String databaseId) {
+        DatabaseConfig config = databaseConfigs.get(databaseId);
+        if (config == null) {
+            throw new IllegalArgumentException("Database configuration not found for ID: " + databaseId);
+        }
+        return config;
+    }
+    
+    public void addDatabaseConfig(DatabaseConfig config) {
+        databaseConfigs.put(config.getId(), config);
+    }
+    
+    public void removeDatabaseConfig(String databaseId) {
+        databaseConfigs.remove(databaseId);
+    }
+    
+    public Map<String, DatabaseConfig> getAllDatabaseConfigs() {
+        return new HashMap<>(databaseConfigs);
+    }
+}

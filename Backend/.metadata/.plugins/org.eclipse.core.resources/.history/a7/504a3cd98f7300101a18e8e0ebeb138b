@@ -1,0 +1,31 @@
+package com.datalingo.one.controller;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import com.datalingo.one.service.QueryProcessingService;
+import com.datalingo.one.service.QueryToSqlConverter;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/query")
+public class QueryController {
+
+    private final QueryProcessingService queryProcessingService;
+
+    @Autowired
+    public QueryController(QueryProcessingService queryProcessingService) {
+        this.queryProcessingService = queryProcessingService;
+    }
+
+    @PostMapping("/execute")
+    public String executeQuery(@RequestBody String naturalLanguageQuery) {
+        // Dummy schema for now
+        String tableSchema = "users(id INT, name VARCHAR, age INT)";
+        return queryProcessingService.processQuery(naturalLanguageQuery, tableSchema);
+    }
+}

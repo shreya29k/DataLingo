@@ -1,0 +1,161 @@
+package com.datalingo.one.service;
+
+import org.springframework.stereotype.Service;
+
+import com.datalingo.one.config.DatabaseType;
+import com.datalingo.one.dto.QueryRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.extern.slf4j.Slf4j;
+import java.util.Map;
+import java.util.HashMap;
+
+@Service
+@Slf4j
+public class PromptEngineeringService {
+    
+    private final Map<DatabaseType, PromptTemplate> promptTemplates;
+    
+    public PromptEngineeringService() {
+        this.promptTemplates = initializePromptTemplates();
+    }
+    
+    private Map<DatabaseType, PromptTemplate> initializePromptTemplates() {
+        Map<DatabaseType, PromptTemplate> templates = new HashMap<>();
+        
+        // MySQL Template
+        templates.put(DatabaseType.MYSQL, PromptTemplate.builder()
+            .systemPrompt("You are a MySQL expert. Generate precise, executable MySQL queries only.")
+            .userTemplate("""
+Context: MySQL Database
+Tables: {tables}
+Schema:
+{schema}
+
+Natural Language Query: "{query}"
+
+Generate MySQL query with these requirements:
+- Use backticks (`) for table/column names with spaces
+- Include proper JOINs if multiple tables involved
+- Use GROUP BY for aggregations with appropriate HAVING clauses
+- Apply LIMIT for result limiting
+- Use MySQL-specific functions when beneficial
+- Ensure query is syntactically correct and executable
+
+Return only the SQL query, no explanations or markdown:""")
+            .build());
+        
+        // PostgreSQL Template
+        templates.put(DatabaseType.POSTGRESQL, PromptTemplate.builder()
+            .systemPrompt("You are a PostgreSQL expert. Generate precise, executable PostgreSQL queries only.")
+            .userTemplate("""
+Context: PostgreSQL Database
+Tables: {tables}
+Schema:
+{schema}
+
+Natural Language Query: "{query}"
+
+Generate PostgreSQL query with these requirements:
+- Use double quotes for case-sensitive identifiers
+- Leverage PostgreSQL-specific features (JSONB, arrays, window functions)
+- Use LIMIT/OFFSET for pagination
+- Include CTEs (WITH clauses) for complex operations
+- Use proper PostgreSQL data types and functions
+- Ensure query is syntactically correct and executable
+
+Return only the SQL query, no explanations or markdown:""")
+            .build());
+        
+        // MongoDB Template
+        templates.put(DatabaseType.MONGODB, PromptTemplate.builder()
+            .systemPrompt("You are a MongoDB expert. Generate precise MongoDB queries and aggregation pipelines only.")
+            .userTemplate("""
+Context: MongoDB Database
+Collections: {collections}
+Schema:
+{schema}
+
+Natural Language Query: "{query}"
+
+Generate MongoDB operation with these requirements:
+- Use proper MongoDB query syntax or aggregation pipeline
+- Include $lookup for joins between collections
+- Use appropriate aggregation operators ($group, $match, $project, $sort)
+- Apply proper filtering and sorting
+- Use MongoDB-specific operators ($in, $regex, $exists, etc.)
+- Format as valid JSON
+
+Return only the MongoDB query/pipeline, no explanations or markdown:""")
+            .build());
+        
+        // Excel/CSV Template
+        templates.put(DatabaseType.EXCEL, PromptTemplate.builder()
+            .systemPrompt("You are a pandas expert. Generate precise Python pandas code for Excel/CSV data analysis only.")
+            .userTemplate("""
+Context: Excel/CSV Data Analysis
+Files: {files}
+Columns: {columns}
+Schema:
+{schema}
+
+Natural Language Query: "{query}"
+
+Generate Python pandas code with these requirements:
+- Use pd.read_excel() or pd.read_csv() for file loading
+- Include proper error handling for file operations
+- Use appropriate pandas methods (groupby, merge, pivot_table, etc.)
+- Handle data types and missing values correctly
+- Include data cleaning if necessary
+- Format output appropriately
+
+Return only the Python code, no explanations or markdown:""")
+            .build());
+        
+        return templates;
+    }
+    
+    public String buildPrompt(QueryRequest request) {
+        PromptTemplate template = promptTemplates.get(request.getDatabaseType());
+        if (template == null) {
+            throw new IllegalArgumentException("Unsupported database type: " + request.getDatabaseType());
+        }
+        
+        String userPrompt = template.getUserTemplate()
+            .replace("{query}", request.getNaturalQuery())
+            .replace("{tables}", String.join(", ", request.getTablesOrCollections()))
+            .replace("{collections}", String.join(", ", request.getTablesOrCollections()))
+            .replace("{files}", String.join(", ", request.getTablesOrCollections()))
+            .replace("{columns}", extractColumns(request.getSchemaInfo()))
+            .replace("{schema}", formatSchema(request.getSchemaInfo()));
+        
+        return template.getSystemPrompt() + "\n\n" + userPrompt;
+    }
+    
+    private String extractColumns(Map<String, Object> schemaInfo) {
+        // Extract column names from schema
+        StringBuilder columns = new StringBuilder();
+        schemaInfo.forEach((table, schema) -> {
+            if (schema instanceof Map) {
+                Map<String, Object> tableSchema = (Map<String, Object>) schema;
+                columns.append(String.join(", ", tableSchema.keySet())).append(" ");
+            }
+        });
+        return columns.toString().trim();
+    }
+    
+    private String formatSchema(Map<String, Object> schemaInfo) {
+        try {
+            return new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(schemaInfo);
+        } catch (Exception e) {
+            return schemaInfo.toString();
+        }
+    }
+    
+    @lombok.Data
+    @lombok.Builder
+    private static class PromptTemplate {
+        private String systemPrompt;
+        private String userTemplate;
+    }
+}

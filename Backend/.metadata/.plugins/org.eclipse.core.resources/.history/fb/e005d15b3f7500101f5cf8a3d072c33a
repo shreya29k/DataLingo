@@ -1,0 +1,25 @@
+spring.application.name=query-processing-service
+
+
+
+logging.level.com.datalingo.one=DEBUG
+server.port=8086
+
+eureka.client.fetch-registry=true
+eureka.client.register-with-eureka=true
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+
+
+# Optional
+eureka.instance.prefer-ip-address=true
+
+mistral.base-url=http://localhost:11434
+mistral.model-name=mistral:7b
+mistral.timeout-seconds=60
+mistral.max-retries=3
+mistral.enable-caching=true
+mistral.cache-expiration-minutes=30
+
+logging.level.com.datalingo=INFO
+logging.level.reactor.netty=WARN
+logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n

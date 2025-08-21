@@ -1,0 +1,107 @@
+.howitworks-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: sans-serif;
+}
+
+.dark-theme {
+  color: #000;
+}
+
+.light-theme {
+  color: #fff;
+}
+
+.navbar-dark {
+  background-color: #000;
+  color: #fff;
+}
+
+.navbar-light {
+  background-color: #fff;
+  color: #000;
+}
+
+.footer-dark {
+  background-color: #000;
+  color: #fff;
+}
+
+.footer-light {
+  background-color: #fff;
+  color: #000;
+}
+
+.howitworks-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  height: 56px;
+}
+
+.howitworks-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+}
+
+/* Glassmorphism Card */
+.howitworks-card {
+  max-width: 900px;
+  width: 100%;
+  padding: 2.5rem;
+  border-radius: 18px;
+  text-align: center;
+}
+
+.glass-bg {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.howitworks-title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 2.2rem;
+}
+
+.howitworks-steps {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.howitworks-step {
+  text-align: center;
+  max-width: 250px;
+}
+
+.step-number {
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.step-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.step-description {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.howitworks-footer {
+  text-align: center;
+  padding: 1rem;
+}

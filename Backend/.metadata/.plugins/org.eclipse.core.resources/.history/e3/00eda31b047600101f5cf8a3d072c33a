@@ -1,0 +1,56 @@
+package com.datalingo.one.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ExecutionResponse {
+    private boolean success;
+    
+    private List<Map<String, Object>> data;
+    
+    @JsonProperty("row_count")
+    private Integer rowCount;
+    
+    private List<ColumnInfo> columns;
+    
+    @JsonProperty("execution_time_ms")
+    private Long executionTimeMs;
+    
+    private String query;
+    
+    @JsonProperty("database_type")
+    private String databaseType;
+    
+    @JsonProperty("request_id")
+    private String requestId;
+    
+    private String error;
+    
+    private List<String> warnings;
+    
+    private LocalDateTime timestamp;
+    public boolean isSuccess() {
+        return success;
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ColumnInfo {
+        private String name;
+        private String type;
+        private boolean nullable;
+    }
+}

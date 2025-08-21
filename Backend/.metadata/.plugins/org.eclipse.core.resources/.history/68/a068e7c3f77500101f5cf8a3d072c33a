@@ -1,0 +1,208 @@
+package com.datalingo.one.controller;
+
+import com.datalingo.one.client.QueryProcessingServiceClient;
+import com.datalingo.one.dto.*;
+import com.datalingo.one.service.DataFormatterService;
+import com.datalingo.one.service.DataSourceService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/datasource")
+@CrossOrigin(origins = "*")
+public class QueryExecutionController {
+    
+    private static final Logger log = LoggerFactory.getLogger(QueryExecutionController.class);
+    
+    @Autowired
+    private QueryProcessingServiceClient queryProcessingClient;
+    
+    @Autowired
+    private DataSourceService dataSourceService;
+    
+    @Autowired
+    private DataFormatterService dataFormatterService;
+    
+    /**
+     * Generate SQL via microservice and execute against database
+     */
+    @PostMapping("/generate-and-execute")
+    public ResponseEntity<QueryExecutionResponse> generateAndExecuteQuery(
+            @RequestBody QueryExecutionRequest request) {
+        
+        log.info("Processing natural language query: '{}' for database: {}", 
+                request.getNaturalLanguageQuery(), request.getDatabaseId());
+        
+        try {
+            // Step 1: Call Query Processing Service to generate SQL
+            QueryResponse generatedQuery = queryProcessingClient.processQuery(
+                request.getNaturalLanguageQuery(), 
+                request.getDatabaseType().toString()
+            );
+            
+            if (!generatedQuery.isExecutable()) {
+                return ResponseEntity.badRequest()
+                    .body(QueryExecutionResponse.error("Generated query is not executable: " + 
+                          String.join(", ", generatedQuery.getWarnings())));
+            }
+            
+            // Step 2: Execute the generated SQL query against the database
+            QueryExecutionResult executionResult = dataSourceService.executeQuery(
+                request.getDatabaseId(),
+                generatedQuery.getGeneratedQuery(),
+                request.getDatabaseType()
+            );
+            
+            // Step 3: Format the results if format is specified
+            Object formattedData = null;
+            if (request.getFormat() != null && executionResult.isSuccess()) {
+                FormattedQueryResult formatted = dataFormatterService.formatResult(
+                    executionResult, request.getFormat());
+                formattedData = formatted.getData();
+            }
+            
+            // Step 4: Build comprehensive response
+            QueryExecutionResponse response = new QueryExecutionResponse();
+            response.setSuccess(executionResult.isSuccess());
+            response.setGeneratedQuery(generatedQuery.getGeneratedQuery());
+            response.setQueryType(generatedQuery.getQueryType());
+            response.setExecutionResult(executionResult);
+            response.setFormattedData(formattedData);
+            response.setGenerationMetadata(generatedQuery.getMetadata());
+            response.setTotalProcessingTimeMs(
+                generatedQuery.getProcessingTimeMs() + executionResult.getExecutionTimeMs()
+            );
+            
+            if (!executionResult.isSuccess()) {
+                response.setErrorMessage(executionResult.getErrorMessage());
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            log.info("Pipeline completed successfully. Generated SQL: '{}', Rows returned: {}, Total time: {}ms", 
+                    generatedQuery.getGeneratedQuery(), 
+                    executionResult.getRowCount(), 
+                    response.getTotalProcessingTimeMs());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error in query execution pipeline: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                .body(QueryExecutionResponse.error("Pipeline error: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Execute pre-written SQL query directly
+     */
+    @PostMapping("/execute")
+    public ResponseEntity<Object> executeDirectQuery(@RequestBody DirectQueryRequest request) {
+        log.info("Executing direct SQL query on database: {}", request.getDatabaseId());
+        log.debug("SQL Query: {}", request.getSqlQuery());
+        
+        try {
+            QueryExecutionResult result = dataSourceService.executeQuery(
+                request.getDatabaseId(),
+                request.getSqlQuery(),
+                request.getDatabaseType()
+            );
+            
+            // Format results if requested
+            if (request.getFormat() != null && result.isSuccess()) {
+                FormattedQueryResult formattedResult = dataFormatterService.formatResult(result, request.getFormat());
+                return ResponseEntity.ok(formattedResult);
+            } else {
+                return ResponseEntity.ok(result);
+            }
+            
+        } catch (Exception e) {
+            log.error("Error executing direct query: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                .body(QueryExecutionResult.error("Execution error: " + e.getMessage(), 0));
+        }
+    }
+    
+    /**
+     * Get database metadata (tables, columns, etc.)
+     */
+    @GetMapping("/metadata/{databaseId}")
+    public ResponseEntity<DatabaseMetadata> getDatabaseMetadata(
+            @PathVariable String databaseId,
+            @RequestParam DatabaseType databaseType) {
+        
+        log.info("Retrieving metadata for database: {} ({})", databaseId, databaseType);
+        
+        try {
+            DatabaseMetadata metadata = dataSourceService.getDatabaseMetadata(databaseId, databaseType);
+            
+            if (metadata == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            log.info("Retrieved metadata - Tables: {}, Database: {}", 
+                    metadata.getTables().size(), metadata.getDatabaseName());
+            
+            return ResponseEntity.ok(metadata);
+            
+        } catch (Exception e) {
+            log.error("Error retrieving database metadata: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Test connection to both database and query processing service
+     */
+    @PostMapping("/test-connection")
+    public ResponseEntity<ConnectionTestResponse> testConnection(@RequestBody ConnectionTestRequest request) {
+        log.info("Testing connections for database: {}", request.getDatabaseId());
+        
+        try {
+            // Test database connection
+            boolean dbConnected = dataSourceService.testConnection(
+                request.getDatabaseId(), 
+                request.getDatabaseType()
+            );
+            
+            // Test query processing service connection
+            boolean qpServiceConnected = queryProcessingClient.testConnection();
+            
+            ConnectionTestResponse response = new ConnectionTestResponse();
+            response.setDatabaseConnected(dbConnected);
+            response.setQueryServiceConnected(qpServiceConnected);
+            response.setSuccess(dbConnected && qpServiceConnected);
+            
+            String message = String.format("Database: %s, Query Service: %s", 
+                dbConnected ? "Connected" : "Failed",
+                qpServiceConnected ? "Connected" : "Failed"
+            );
+            response.setMessage(message);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error testing connections: {}", e.getMessage(), e);
+            ConnectionTestResponse response = new ConnectionTestResponse();
+            response.setSuccess(false);
+            response.setMessage("Connection test failed: " + e.getMessage());
+            return ResponseEntity.ok(response);
+        }
+    }
+    
+    /**
+     * Get available models from query processing service
+     */
+    @GetMapping("/models")
+    public ResponseEntity<Object> getAvailableModels() {
+        try {
+            Object models = queryProcessingClient.getAvailableModels();
+            return ResponseEntity.ok(models);
+        } catch (Exception e) {
+            log.error("Error retrieving available models: {}", e.getMessage());
+            return ResponseEntity.internalServerError().body("Failed to retrieve models");
+        }
+    }
+}

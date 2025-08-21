@@ -1,0 +1,17 @@
+package com.datalingo.one.client;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+@FeignClient(
+    name = "query-processing-service", 
+    url = "${app.services.query-processing.url:http://localhost:8086}"
+)
+public interface QueryProcessingClient {
+
+    @PostMapping("/api/query/generate")
+    QueryResponse generateQuery(@RequestBody QueryRequest request);
+}

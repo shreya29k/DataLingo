@@ -1,0 +1,5 @@
+package com.datalingo.one.service.impl;
+
+public class GptQueryService {
+
+}

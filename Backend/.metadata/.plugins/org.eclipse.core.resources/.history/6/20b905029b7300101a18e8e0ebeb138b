@@ -1,0 +1,101 @@
+// GptQueryService.java
+package com.datalingo.one.service.impl;
+
+import com.datalingo.one.config.OpenAIConfig;
+import com.datalingo.one.dto.OpenAiRequest;
+import com.datalingo.one.dto.OpenAiResponse;
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import com.datalingo.one.service.QueryProcessingService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClientException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class GptQueryService implements QueryProcessingService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(GptQueryService.class);
+    
+    @Autowired
+    private RestTemplate restTemplate;
+    
+    @Autowired
+    private OpenAIConfig openAiConfig;
+    
+    private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+    
+    @Override
+    public String processQuery(String naturalLanguageQuery, String tableSchema) {
+        try {
+            logger.info("Processing query: {} with schema: {}", naturalLanguageQuery, tableSchema);
+            
+            String prompt = buildPrompt(naturalLanguageQuery, tableSchema);
+            
+            
+            OpenAiRequest.Message message = new OpenAiRequest.Message("user", prompt);
+            OpenAiRequest request = new OpenAiRequest("gpt-3.5-turbo", Collections.singletonList(message));
+            request.setMaxTokens(500);
+            request.setTemperature(0.1); // Low temperature for more deterministic responses
+            
+            // Set headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(openAiConfig.getApiKey());
+            
+            HttpEntity<OpenAiRequest> entity = new HttpEntity<>(request, headers);
+            
+            // Make API call
+            ResponseEntity<OpenAiResponse> response = restTemplate.exchange(
+                OPENAI_URL, HttpMethod.POST, entity, OpenAiResponse.class);
+            
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                OpenAiResponse openAiResponse = response.getBody();
+                if (openAiResponse.getChoices() != null && !openAiResponse.getChoices().isEmpty()) {
+                    String sqlQuery = openAiResponse.getChoices().get(0).getMessage().getContent().trim();
+                    logger.info("Generated SQL: {}", sqlQuery);
+                    return cleanSqlQuery(sqlQuery);
+                }
+            }
+            
+            throw new RuntimeException("Failed to get valid response from OpenAI");
+            
+        } catch (RestClientException e) {
+            logger.error("Error calling OpenAI API", e);
+            throw new RuntimeException("Failed to process query with OpenAI: " + e.getMessage(), e);
+        } catch (Exception e) {
+            logger.error("Unexpected error processing query", e);
+            throw new RuntimeException("Unexpected error: " + e.getMessage(), e);
+        }
+    }
+    
+    private String buildPrompt(String naturalLanguageQuery, String tableSchema) {
+        return String.format(
+            "Convert the following natural language query into an SQL query. " +
+            "Table schema: %s. " +
+            "Query: %s. " +
+            "Return only the SQL query without any explanation or formatting.",
+            tableSchema, naturalLanguageQuery
+        );
+    }
+    
+    private String cleanSqlQuery(String sqlQuery) {
+        // Remove markdown formatting if present
+        sqlQuery = sqlQuery.replaceAll("```sql", "").replaceAll("```", "");
+        // Remove extra whitespace
+        sqlQuery = sqlQuery.trim();
+        // Ensure it ends with semicolon
+        if (!sqlQuery.endsWith(";")) {
+            sqlQuery += ";";
+        }
+        return sqlQuery;
+    }
+}

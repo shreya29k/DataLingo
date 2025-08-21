@@ -1,0 +1,115 @@
+package com.datalingo.one.controller;
+
+import com.datalingo.one.dto.QueryRequest;
+import com.datalingo.one.dto.QueryResponse;
+import com.datalingo.one.service.QueryProcessingService;
+import com.datalingo.one.service.QueryToSqlConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import javax.validation.Valid;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/query")
+@CrossOrigin(origins = "*")
+@Validated
+public class QueryController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(QueryController.class);
+    
+    @Autowired
+    private QueryProcessingService queryProcessingService;
+    
+    @Autowired
+    private QueryToSqlConverter queryToSqlConverter;
+    
+    @PostMapping("/execute")
+    public ResponseEntity<QueryResponse> executeQuery(@Valid @RequestBody QueryRequest request) {
+        try {
+            logger.info("Received query execution request for: '{}'", request.getNaturalLanguageQuery());
+            
+            // Validate converter is ready
+            if (!queryToSqlConverter.isConfigured()) {
+                logger.warn("Query converter is not properly configured");
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(new QueryResponse(null, 
+                        "Query processing service is not properly configured. Please check the API key.", 
+                        false));
+            }
+            
+            String sqlQuery = queryProcessingService.processQuery(
+                request.getNaturalLanguageQuery(), 
+                request.getTableSchema()
+            );
+            
+            logger.info("Successfully processed query. Generated SQL: {}", sqlQuery);
+            QueryResponse response = new QueryResponse(sqlQuery, "Query processed successfully", true);
+            return ResponseEntity.ok(response);
+            
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid request: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(new QueryResponse(null, "Invalid request: " + e.getMessage(), false));
+                
+        } catch (RuntimeException e) {
+            logger.error("Runtime error processing query", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new QueryResponse(null, "Processing error: " + e.getMessage(), false));
+                
+        } catch (Exception e) {
+            logger.error("Unexpected error processing query", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new QueryResponse(null, "An unexpected error occurred", false));
+        }
+    }
+    
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> healthCheck() {
+        try {
+            boolean converterReady = queryToSqlConverter.isConfigured();
+            String status = converterReady ? "healthy" : "degraded";
+            
+            Map<String, Object> health = Map.of(
+                "service", "Query Processing Service",
+                "status", status,
+                "converter_configured", converterReady,
+                "timestamp", System.currentTimeMillis()
+            );
+            
+            return converterReady ? 
+                ResponseEntity.ok(health) : 
+                ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(health);
+                
+        } catch (Exception e) {
+            logger.error("Health check failed", e);
+            Map<String, Object> health = Map.of(
+                "service", "Query Processing Service",
+                "status", "unhealthy",
+                "error", e.getMessage(),
+                "timestamp", System.currentTimeMillis()
+            );
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(health);
+        }
+    }
+    
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> getServiceStatus() {
+        Map<String, Object> status = Map.of(
+            "service", "Query Processing Service",
+            "version", "1.0.0",
+            "converter_type", queryToSqlConverter.getClass().getSimpleName(),
+            "converter_ready", queryToSqlConverter.isConfigured(),
+            "uptime", ManagementFactory.getRuntimeMXBean().getUptime(),
+            "timestamp", System.currentTimeMillis()
+        );
+        
+        return ResponseEntity.ok(status

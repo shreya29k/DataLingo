@@ -1,0 +1,30 @@
+package com.datalingo.one.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.util.List;
+import java.util.Map;
+import lombok.Data;
+@Data
+public class QueryRequest {
+    @NotBlank
+    private String prompt;
+    
+    @JsonProperty("database_type")
+    private String databaseType = "MYSQL";
+    
+    private Map<String, Object> parameters;
+    
+    @JsonProperty("connection_params")
+    private ConnectionParams connectionParams;
+    
+    @Data
+    public static class ConnectionParams {
+        private String host;
+        private Integer port;
+        private String database;
+        private String username;
+        private String password;
+    }
+}

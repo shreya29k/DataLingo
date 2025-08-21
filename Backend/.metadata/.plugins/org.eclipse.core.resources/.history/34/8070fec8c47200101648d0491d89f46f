@@ -1,0 +1,5 @@
+package com.datalingo.one.filter;
+
+public class JwtAuthenticationFilter {
+
+}
