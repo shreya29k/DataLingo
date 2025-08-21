@@ -73,7 +73,7 @@ Strengths: Optimized inference speed, strong reasoning, and efficient handling o
 
 Integration: Combined with LangChain for schema detection & prompt chaining to improve SQL accuracy
 
-📂 Project Structure
+```📂 Project Structure
 DataLingo/
 │── Frontend/               # React + Vite + Tailwind app
 │── Backend/                # Spring Boot microservices
@@ -85,6 +85,7 @@ DataLingo/
 │   └── eureka-server/      # Service discovery
 │── docker-compose.yml      # Docker setup
 │── README.md               # Project documentation
+```
 
 ⚡ Getting Started
 1️⃣ Clone Repo
