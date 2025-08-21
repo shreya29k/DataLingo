@@ -1,0 +1,125 @@
+:root {
+    --lavender: #b57edc;
+    --light-bg: #ffffff;
+    --dark-bg: #000000;
+}
+
+/* Page Wrapper */
+.research-page {
+    font-family: 'Segoe UI', sans-serif;
+    padding-bottom: 80px;
+}
+
+.research-page.light {
+    background-color: var(--light-bg);
+    color: black;
+}
+
+.research-page.dark {
+    background-color: var(--dark-bg);
+    color: white;
+}
+
+/* Navbar */
+.research-navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Branding */
+.navbar-left {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.logo {
+    width: 40px;
+    height: 32px;
+}
+
+.brand-text {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-left: 0.5rem;
+    background: linear-gradient(to right, #b57edc, #9b5de5);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Nav Links */
+.navbar-right .nav-link {
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-decoration: none;
+    color: grey;
+    transition: color 0.3s ease;
+}
+
+.navbar-right .nav-link:hover {
+    color: var(--lavender);
+}
+
+/* Sections */
+.research-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 3rem 2rem;
+}
+
+.research-image {
+    width: 80%;
+    max-width: 800px;
+    height: auto;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Text Block */
+.research-text {
+    width: 80%;
+    max-width: 800px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    text-align: left;
+}
+
+.research-heading {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    color: var(--lavender);
+}
+
+/* Paragraph Colors */
+.light .research-text p {
+    color: black;
+}
+
+.dark .research-text p {
+    color: white;
+}
+
+/* Footer */
+.research-footer {
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.875rem;
+}
+
+.light .research-footer {
+    background-color: var(--light-bg);
+    color: var(--lavender);
+}
+
+.dark .research-footer {
+    background-color: var(--dark-bg);
+    color: var(--lavender);
+}
